@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProductivityTracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <!-- Login View -->
+    <div id="login-view" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: var(--bg-color);">
+        <div class="panel" style="width: 100%; max-width: 400px; padding: 2rem;">
+            <h2 id="auth-title" style="text-align: center; margin-bottom: 1.5rem;">Iniciar Sesión</h2>
+            <form id="login-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="email" id="auth-email" placeholder="Correo Electrónico" required style="padding: 0.75rem;">
+                <input type="password" id="auth-password" placeholder="Contraseña" required style="padding: 0.75rem;">
+                <select id="auth-role" style="display: none; padding: 0.75rem;">
+                    <option value="integrante">Integrante</option>
+                    <option value="admin">Administrador</option>
+                </select>
+                <button type="submit" id="submit-auth-btn" class="btn btn-primary" style="padding: 0.75rem;">Entrar</button>
+                <a href="#" id="toggle-auth-mode" style="text-align: center; font-size: 0.9rem; color: var(--primary-color);">¿No tienes cuenta? Regístrate</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-container" style="display: none;">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon"></span>
+                <h1>ProdTrack</h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-btn active admin-only" data-target="dashboard-view">Dashboard</button>
+                <button class="nav-btn admin-only" data-target="manage-view">Gestión</button>
+                <button class="nav-btn admin-only" data-target="metrics-view">Métricas</button>
+                <button class="nav-btn member-only" data-target="join-view">Unirse a Grupo</button>
+                <button class="nav-btn" data-target="register-view">Registro</button>
+                <button class="nav-btn admin-only" data-target="reports-view">Reportes</button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            
+            <!-- Dashboard View -->
+            <section id="dashboard-view" class="view active">
+                <header>
+                    <h2>Dashboard General</h2>
+                    <p>Resumen de la productividad de tus grupos</p>
+                </header>
+                <div class="stats-grid" style="margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <h3>Total Grupos</h3>
+                        <p id="dash-groups">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Individuos</h3>
+                        <p id="dash-individuals">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Registros Hoy</h3>
+                        <p id="dash-records">0</p>
+                    </div>
+                </div>
+
+                <header>
+                    <h2>Equipos Activos</h2>
+                    <p>Progreso de los grupos con metas definidas</p>
+                </header>
+                <div id="dash-active-teams" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                    <!-- Team progress cards injected here -->
+                </div>
+            </section>
+
+            <!-- Management View (Groups & Individuals) -->
+            <section id="manage-view" class="view">
+                <header>
+                    <h2>Gestión de Equipo</h2>
+                    <p>Administra los grupos y los individuos asignados</p>
+                </header>
+                <div class="split-layout">
+                    <!-- Groups -->
+                    <div class="panel">
+                        <h3>Grupos</h3>
+                        <form id="form-group" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+                            <input type="text" id="group-name" placeholder="Nombre del Grupo" required>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <input type="number" id="group-target-amount" placeholder="Cantidad Meta (Opc)" min="1" style="flex: 1;">
+                                <select id="group-target-metric" style="flex: 1;">
+                                    <option value="" selected>Sin métrica objetivo</option>
+                                </select>
+                                <input type="date" id="group-target-date" style="flex: 1;" title="Fecha límite">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Añadir Grupo</button>
+                        </form>
+                        <ul id="list-groups" class="item-list"></ul>
+                    </div>
+                    <!-- Individuals -->
+                    <div class="panel">
+                        <h3>Solicitudes Pendientes</h3>
+                        <ul id="list-pending" class="item-list" style="margin-bottom: 2rem;"></ul>
+                        
+                        <h3>Miembros Activos</h3>
+                        <ul id="list-individuals" class="item-list"></ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Join Group View -->
+            <section id="join-view" class="view">
+                <header>
+                    <h2>Unirse a un Grupo</h2>
+                    <p>Ingresa el código de invitación proporcionado por tu administrador</p>
+                </header>
+                <div class="panel card-form">
+                    <form id="form-join-group">
+                        <div class="form-group">
+                            <label>Código de Invitación</label>
+                            <input type="text" id="invite-code-input" placeholder="Ej: A7X9WQ" required style="text-transform: uppercase;">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Solicitar Acceso</button>
+                    </form>
+                    <div id="join-status-message" style="margin-top: 1rem; text-align: center; font-weight: bold;"></div>
+                </div>
+            </section>
+
+            <!-- Metrics Config View -->
+            <section id="metrics-view" class="view">
+                <header>
+                    <h2>Métricas Dinámicas</h2>
+                    <p>Define las métricas personalizadas a evaluar</p>
+                </header>
+                <div class="panel">
+                    <form id="form-metric" class="form-inline">
+                        <input type="text" id="metric-name" placeholder="Ej: Llamadas realizadas, Líneas de código" required>
+                        <select id="metric-type" required>
+                            <option value="number">Número / Cantidad</option>
+                            <option value="time">Tiempo (Horas)</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Crear Métrica</button>
+                    </form>
+                    <ul id="list-metrics" class="item-list"></ul>
+                </div>
+            </section>
+
+            <!-- Register Productivity View -->
+            <section id="register-view" class="view">
+                <header>
+                    <h2>Registro de Actividad</h2>
+                    <p>Registra el avance de un individuo</p>
+                </header>
+                <div class="panel card-form">
+                    <form id="form-record">
+                        <div class="form-group">
+                            <label>Individuo</label>
+                            <select id="record-individual" required>
+                                <option value="" disabled selected>Selecciona un Individuo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha</label>
+                            <input type="date" id="record-date" required>
+                        </div>
+                        <div id="dynamic-metrics-container">
+                            <!-- Metric inputs will be generated here -->
+                            <p class="empty-state">Por favor, configura al menos una métrica primero.</p>
+                        </div>
+                        <div class="form-group" style="margin-top: 1.5rem;">
+                            <label>Notas / Detalles (Opcional)</label>
+                            <textarea id="record-notes" rows="3" placeholder="Ej: Registros ID 100 al 200, errores corregidos, etc."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Guardar Registro</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Reports View -->
+            <section id="reports-view" class="view">
+                <header>
+                    <h2>Reportes de Productividad</h2>
+                    <p>Genera reportes por individuo o grupo</p>
+                </header>
+                <div class="panel">
+                    <div class="report-filters">
+                        <select id="report-type">
+                            <option value="individual">Por Individuo</option>
+                            <option value="group">Por Grupo</option>
+                        </select>
+                        <select id="report-target" required>
+                            <option value="" disabled selected>Selecciona un objetivo...</option>
+                        </select>
+                        <button id="btn-generate-report" class="btn btn-secondary">Generar Reporte</button>
+                        <button id="btn-download-pdf" class="btn btn-primary" style="display: none; margin-left: auto;">Descargar PDF</button>
+                    </div>
+                    <div id="report-results" class="report-results mt-4">
+                        <!-- Results injected here -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Se elimina store.js y reports.js de aquí porque se importarán dentro de app.js -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
