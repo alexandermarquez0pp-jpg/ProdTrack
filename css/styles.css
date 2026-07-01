@@ -321,3 +321,86 @@ input:focus, select:focus, textarea:focus {
     font-style: italic;
     font-size: 0.9rem;
 }
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 9999;
+}
+
+.toast {
+    background: var(--bg-surface);
+    color: var(--text-main);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    border-left: 4px solid var(--primary-color);
+    min-width: 250px;
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast.success {
+    border-left-color: #137333;
+}
+.toast.success i {
+    color: #137333;
+}
+
+.toast.error {
+    border-left-color: var(--primary-color);
+}
+.toast.error i {
+    color: var(--primary-color);
+}
+
+/* --- Dynamic Themes --- */
+body.theme-patty {
+    --primary-color: #F48FB1; /* Rosa pastel */
+    --primary-hover: #F06292; /* Rosa un poco más oscuro */
+    --bg-main: #E8F5E9; /* Verde pastel muy claro */
+    --bg-surface: #FFFFFF;
+    --text-main: #37474F; /* Gris oscuro para contraste */
+    --shadow-md: 0 4px 12px rgba(244, 143, 177, 0.3);
+    --shadow-lg: 0 10px 25px rgba(244, 143, 177, 0.4);
+}
+
+body.theme-alexander {
+    --primary-color: #007BFF; /* Azul eléctrico */
+    --primary-hover: #0056b3; 
+    --bg-main: #121212; /* Fondo negro */
+    --bg-surface: #1E1E1E; /* Gris muy oscuro para las tarjetas */
+    --text-main: #F8F9FA; /* Texto blanco */
+    --text-muted: #ADB5BD; 
+    --border-color: #333333;
+    --shadow-md: 0 4px 12px rgba(0, 123, 255, 0.2);
+    --shadow-lg: 0 10px 25px rgba(0, 123, 255, 0.3);
+}
+
+body.theme-alexander input, 
+body.theme-alexander select, 
+body.theme-alexander textarea {
+    background-color: #2D2D2D;
+    color: #F8F9FA;
+    border-color: #444;
+}
+
+body.theme-alexander .item-list li {
+    border-bottom: 1px solid #333;
+}
+
+
