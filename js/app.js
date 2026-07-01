@@ -2,6 +2,33 @@ import { initAuth } from './auth.js';
 import * as Store from './store.js';
 import { initReports } from './reports.js';
 
+// --- Toast System ---
+window.showToast = (msg, type = 'success') => {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' ? '✓' : '⚠';
+    
+    toast.innerHTML = `
+        <span style="font-weight: bold; font-size: 1.2rem;">${icon}</span>
+        <span>${msg}</span>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize Authentication
@@ -49,6 +76,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.member-only').forEach(el => {
             el.style.display = !isAdmin ? '' : 'none';
         });
+
+        // Apply Dynamic Theme based on User Name
+        document.body.className = ''; // reset themes
+        if (window.currentUserName) {
+            const lowerName = window.currentUserName.toLowerCase();
+            if (lowerName.includes('patricia') || lowerName.includes('patty') || lowerName.includes('ortiz')) {
+                document.body.classList.add('theme-patty');
+            } else if (lowerName.includes('alex') || lowerName.includes('marquez')) {
+                document.body.classList.add('theme-alexander');
+            }
+        }
 
         // Member State Enforcement
         if (!isAdmin) {
@@ -318,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     metricInput.value, 
                     dateInput.value
                 );
+                window.showToast('Grupo creado correctamente');
                 e.target.reset();
             }
         });
@@ -331,9 +370,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (codeInput) {
                 try {
                     await Store.requestJoinGroup(window.currentUser.uid, codeInput);
-                    alert("Solicitud enviada correctamente.");
+                    window.showToast("Solicitud enviada correctamente.");
                 } catch (error) {
-                    alert(error.message);
+                    window.showToast(error.message, 'error');
                 }
             }
         });
@@ -347,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const typeInput = document.getElementById('metric-type');
             if(nameInput.value.trim() && typeInput.value) {
                 await Store.addMetric(nameInput.value.trim(), typeInput.value);
+                window.showToast('Métrica añadida correctamente');
                 e.target.reset();
             }
         });
@@ -370,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if(indId && date) {
                 await Store.addRecord(indId, date, metricsData, notes);
-                alert('Registro guardado exitosamente.');
+                window.showToast('Registro guardado exitosamente.');
                 e.target.reset(); // Reset form
                 document.getElementById('record-date').valueAsDate = new Date();
             }

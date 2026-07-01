@@ -13,7 +13,9 @@ const appContainer = document.querySelector('.app-container');
 const loginForm = document.getElementById('login-form');
 const emailInput = document.getElementById('auth-email');
 const passwordInput = document.getElementById('auth-password');
-const roleSelect = document.getElementById('auth-role'); // Solo visible en registro
+const nameInput = document.getElementById('auth-name');
+const nameGroup = document.getElementById('name-group');
+const roleSelect = document.getElementById('auth-role');
 const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
 const submitAuthBtn = document.getElementById('submit-auth-btn');
 const authTitle = document.getElementById('auth-title');
@@ -21,6 +23,7 @@ const logoutBtn = document.createElement('button'); // Añadiremos un botón de 
 
 let isLoginMode = true;
 window.currentUserRole = null; // 'admin' or 'integrante'
+window.currentUserName = null;
 window.currentUser = null;
 
 export function initAuth() {
@@ -44,6 +47,7 @@ export function initAuth() {
             submitAuthBtn.textContent = isLoginMode ? 'Entrar' : 'Crear Cuenta';
             toggleAuthModeBtn.textContent = isLoginMode ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión';
             if(roleSelect) roleSelect.style.display = isLoginMode ? 'none' : 'block';
+            if(nameGroup) nameGroup.style.display = isLoginMode ? 'none' : 'flex';
         });
     }
 
@@ -59,10 +63,12 @@ export function initAuth() {
                     await signInWithEmailAndPassword(auth, email, password);
                 } else {
                     const role = roleSelect ? roleSelect.value : 'integrante';
+                    const name = nameInput ? nameInput.value.trim() : email;
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     // Create user doc
                     await setDoc(doc(db, 'users', userCredential.user.uid), {
                         email: email,
+                        name: name,
                         role: role
                     });
                 }
@@ -78,17 +84,20 @@ export function initAuth() {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             window.currentUser = user;
-            // Fetch role
+            // Fetch role & name
             try {
                 const userDoc = await getDoc(doc(db, 'users', user.uid));
                 if (userDoc.exists()) {
                     window.currentUserRole = userDoc.data().role;
+                    window.currentUserName = userDoc.data().name || user.email;
                 } else {
                     window.currentUserRole = 'integrante'; // default
+                    window.currentUserName = user.email;
                 }
             } catch (error) {
                 console.error("Error fetching user role:", error);
                 window.currentUserRole = 'integrante'; // default on error
+                window.currentUserName = user.email;
             }
 
             // Show App, Hide Login
@@ -100,6 +109,7 @@ export function initAuth() {
         } else {
             window.currentUser = null;
             window.currentUserRole = null;
+            window.currentUserName = null;
             document.dispatchEvent(new CustomEvent('authStateChanged', { detail: { user: null, role: null } }));
             
             // Show Login, Hide App
