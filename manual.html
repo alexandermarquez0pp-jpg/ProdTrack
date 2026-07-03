@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Usuario - ProdTrack AIT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #E63946;
+            --secondary-color: #457B9D;
+            --bg-color: #f4f7f6;
+            --text-color: #2b2d42;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .section {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-5px);
+        }
+
+        .section h2 {
+            color: var(--secondary-color);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .highlight {
+            background-color: #ffe8e9;
+            color: var(--primary-color);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding: 2rem;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+
+        .credits {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+
+        .btn-return {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        .btn-return:hover {
+            background-color: #d62828;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ProdTrack AIT</h1>
+        <p>Manual Oficial de Usuario y Supervisión</p>
+    </header>
+
+    <div class="container">
+        
+        <div class="section">
+            <h2>1. Registro y Primeros Pasos</h2>
+            <p>El sistema divide a los usuarios en dos categorías: <strong>Administrador</strong> y <strong>Pasantes/Técnicos</strong>.</p>
+            <ul>
+                <li><strong>Administrador:</strong> Es el supervisor. Debe registrarse eligiendo la opción "Administrador". Una vez dentro, en la pestaña <span class="highlight">Gestión</span>, debe crear el grupo de trabajo (Ej. "Equipo AIT"). Esto generará un código de invitación.</li>
+                <li><strong>Técnico / Pasante:</strong> Se registra eligiendo "Integrante". Al entrar, el sistema le pedirá el código de invitación generado por el administrador.</li>
+                <li>Finalmente, el Administrador debe <strong>aprobar</strong> el acceso del integrante desde su panel de Gestión.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>2. Uso para Pasantes y Técnicos</h2>
+            <p>La herramienta diaria para el equipo de campo es la pestaña <span class="highlight">Soporte AIT</span>.</p>
+            <ul>
+                <li><strong>Formulario AIT:</strong> Contiene todos los campos necesarios para un reporte técnico oficial de PDVSA (Localidad, Cliente, Marca, Modelo, Actividad, etc.).</li>
+                <li><strong>Cámara Fotográfica:</strong> Al final del formulario hay un botón para adjuntar evidencia. Desde el teléfono abrirá directamente la cámara. Las fotos se comprimen automáticamente para no gastar datos móviles.</li>
+                <li><strong>Mi Agenda:</strong> Los pasantes pueden ver en tiempo real las tareas que el Administrador les ha asignado, marcarlas como completadas y borrarlas de ser necesario.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>3. Herramientas del Administrador</h2>
+            <p>El Administrador posee el control total sobre la operación del equipo desde la pestaña <span class="highlight">Agendas del Equipo</span>.</p>
+            <ul>
+                <li><strong>Monitor en Tiempo Real:</strong> Puede seleccionar a cualquier pasante y ver sus tareas completadas o pendientes del día.</li>
+                <li><strong>Asignación Múltiple de Tareas:</strong> Puede escribir una nueva tarea, fijar su Prioridad (P1, P2 o P3), y seleccionando con la tecla `Ctrl` puede asignársela a una, dos o todas las personas que necesite al mismo tiempo.</li>
+                <li><strong>Notificaciones Push:</strong> Cuando el Administrador envía la tarea, a los teléfonos de los pasantes seleccionados les llegará una notificación tipo alerta avisándoles del nuevo trabajo.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>4. Descarga de Reportes (PDF y Word)</h2>
+            <p>El sistema automatiza la creación de los reportes para la Gerencia. En la vista de <span class="highlight">Soporte AIT</span>, el Administrador tiene un menú para elegir al empleado y descargar su información:</p>
+            <ul>
+                <li><strong>Reporte Diario (PDF):</strong> Clic en el botón "Descargar PDF del Día". Genera un documento inmodificable con todos los tickets y fotografías del día exacto en curso. Ideal para cierres de guardia rápidos.</li>
+                <li><strong>Reporte Semanal (Microsoft Word):</strong> Clic en el botón azul "Descargar Semanal (Word)". El sistema junta todos los tickets de los <strong>últimos 7 días</strong> del empleado, y los empaqueta en un archivo `.doc`. Esto permite abrir el archivo en Office para agregar notas finales y enviarlo los días Jueves al mediodía.</li>
+            </ul>
+        </div>
+
+        <a href="index.html" class="btn-return">← Volver a la Aplicación</a>
+
+        <div class="footer">
+            <p class="credits">Desarrollado y Creado exclusivamente por: Alexander Márquez</p>
+            <p>Plataforma de Control de Productividad - 2026</p>
+        </div>
+
+    </div>
+</body>
+</html>

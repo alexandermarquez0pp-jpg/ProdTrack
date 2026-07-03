@@ -17,14 +17,10 @@
             <h2 id="auth-title" style="text-align: center; margin-bottom: 1.5rem;">Iniciar Sesión</h2>
             <form id="login-form" style="display: flex; flex-direction: column; gap: 1rem;">
                 <div id="name-group" style="display: none; flex-direction: column; gap: 0.5rem;">
-                    <input type="text" id="auth-name" placeholder="Nombre Completo (Ej: Patricia Ortiz)" style="padding: 0.75rem;">
+                    <input type="text" id="auth-name" placeholder="Nombre Completo" style="padding: 0.75rem; font-size: 16px;">
                 </div>
-                <input type="email" id="auth-email" placeholder="Correo Electrónico" required style="padding: 0.75rem;">
-                <input type="password" id="auth-password" placeholder="Contraseña" required style="padding: 0.75rem;">
-                <select id="auth-role" style="display: none; padding: 0.75rem;">
-                    <option value="integrante">Integrante</option>
-                    <option value="admin">Administrador</option>
-                </select>
+                <input type="email" id="auth-email" placeholder="Correo Electrónico" required style="padding: 0.75rem; font-size: 16px;">
+                <input type="password" id="auth-password" placeholder="Contraseña" required style="padding: 0.75rem; font-size: 16px;">
                 <button type="submit" id="submit-auth-btn" class="btn btn-primary" style="padding: 0.75rem;">Entrar</button>
                 <a href="#" id="toggle-auth-mode" style="text-align: center; font-size: 0.9rem; color: var(--primary-color);">¿No tienes cuenta? Regístrate</a>
             </form>
@@ -39,12 +35,18 @@
                 <h1>ProdTrack</h1>
             </div>
             <nav class="nav-menu">
+                <div id="user-group-indicator" class="member-only" style="background-color: var(--primary-color); color: white; text-align: center; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; font-weight: bold; font-size: 0.9rem; display: none;"></div>
+                
                 <button class="nav-btn active admin-only" data-target="dashboard-view">Dashboard</button>
                 <button class="nav-btn admin-only" data-target="manage-view">Gestión</button>
                 <button class="nav-btn admin-only" data-target="metrics-view">Métricas</button>
+                <button class="nav-btn member-only" data-target="agenda-view">Mi Agenda</button>
+                <button class="nav-btn member-only" data-target="ait-view">Soporte AIT</button>
                 <button class="nav-btn member-only" data-target="join-view">Unirse a Grupo</button>
-                <button class="nav-btn" data-target="register-view">Registro</button>
+                <button class="nav-btn" data-target="register-view">Registro Métricas</button>
+                <button class="nav-btn admin-only" data-target="admin-agenda-view">Agendas del Equipo</button>
                 <button class="nav-btn admin-only" data-target="reports-view">Reportes</button>
+                <a href="manual.html" target="_blank" class="nav-btn" style="text-decoration: none; text-align: left; display: block; margin-top: 2rem; color: #666;">📘 Manual de Usuario</a>
             </nav>
         </aside>
 
@@ -183,6 +185,88 @@
                 </div>
             </section>
 
+            <!-- Personal Agenda View (Members) -->
+            <section id="agenda-view" class="view">
+                <header>
+                    <h2>Mi Agenda de Trabajo</h2>
+                    <p>Organiza y reporta tus tareas diarias</p>
+                </header>
+                <div class="split-layout">
+                    <div class="panel card-form">
+                        <h3>Añadir Tarea</h3>
+                        <form id="form-add-task">
+                            <div class="form-group">
+                                <label>Actividad / Título</label>
+                                <input type="text" id="task-title" placeholder="Ej: Llamar al cliente..." required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha programada</label>
+                                <input type="date" id="task-date" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Agregar a la Agenda</button>
+                        </form>
+                    </div>
+                    <div class="panel">
+                        <h3>Tareas de Hoy</h3>
+                        <ul id="list-my-tasks" class="item-list task-list"></ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Supervision Agenda View -->
+            <section id="admin-agenda-view" class="view">
+                <header>
+                    <h2>Supervisión de Agendas</h2>
+                    <p>Monitorea y asigna tareas a tu equipo</p>
+                </header>
+                <div class="split-layout">
+                    <!-- Assign Task Form -->
+                    <div class="panel card-form">
+                        <h3>Asignar Nueva Tarea</h3>
+                        <form id="form-assign-task">
+                            <div class="form-group">
+                                <label>Título de la Tarea</label>
+                                <input type="text" id="assign-task-title" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Asignar a (Mantén Ctrl presionado para elegir varios)</label>
+                                <select id="assign-task-users" multiple required style="height: 120px;">
+                                    <!-- Usuarios inyectados por JS -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Prioridad / Nivel</label>
+                                <select id="assign-task-priority" required>
+                                    <option value="1">1 - Alta</option>
+                                    <option value="2" selected>2 - Media</option>
+                                    <option value="3">3 - Baja</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha programada</label>
+                                <input type="date" id="assign-task-date" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Asignar Tarea</button>
+                        </form>
+                    </div>
+
+                    <!-- Supervision Panel -->
+                    <div class="panel">
+                        <h3>Ver Agendas</h3>
+                        <div class="form-inline">
+                            <select id="admin-agenda-filter">
+                                <option value="" disabled selected>Selecciona un Integrante</option>
+                            </select>
+                            <input type="date" id="admin-agenda-date">
+                        </div>
+                        
+                        <div id="admin-agenda-results" style="margin-top: 1.5rem;">
+                            <p class="empty-state">Selecciona un empleado para ver su agenda.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Reports View -->
             <section id="reports-view" class="view">
                 <header>
@@ -206,6 +290,102 @@
                     </div>
                 </div>
             </section>
+
+            <!-- AIT Support View -->
+            <section id="ait-view" class="view">
+                <header>
+                    <h2>Soporte Técnico (AIT)</h2>
+                    <p>Registro de intervenciones diarias y generación de reportes</p>
+                </header>
+                <div class="split-layout">
+                    <!-- Form Panel -->
+                    <div class="panel card-form member-only" style="flex: 2;">
+                        <h3>Nuevo Registro</h3>
+                        <form id="form-ait" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>🏢 Localidad / Edificio</label>
+                                <input type="text" id="ait-location" required>
+                            </div>
+                            <div class="form-group">
+                                <label>📝 Nombre del Usuario</label>
+                                <input type="text" id="ait-client" required>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>✅ Actividad Realizada</label>
+                                <input type="text" id="ait-activity" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Etiqueta</label>
+                                <input type="text" id="ait-tag" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Marca</label>
+                                <input type="text" id="ait-brand" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Modelo</label>
+                                <input type="text" id="ait-model" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo (Laptop/PC)</label>
+                                <input type="text" id="ait-type" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Usuario / Pool</label>
+                                <input type="text" id="ait-pool" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Indicador</label>
+                                <input type="text" id="ait-indicator" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Correo</label>
+                                <input type="email" id="ait-email" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Gerencia</label>
+                                <input type="text" id="ait-management" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Negocio</label>
+                                <input type="text" id="ait-business" required>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Asesoría y Apoyo</label>
+                                <input type="text" id="ait-support" required>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>📷 Tomar Foto / Adjuntar Evidencia (Opcional)</label>
+                                <input type="file" id="ait-photo" accept="image/*" capture="environment" style="background: transparent; color: inherit; border: none; padding: 0.5rem 0;">
+                                <img id="ait-photo-preview" style="max-width: 100%; max-height: 200px; display: none; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border-color);" alt="Preview">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1; margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary w-100">Guardar Registro AIT</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Report Panel -->
+                    <div class="panel" style="flex: 1; display: flex; flex-direction: column; gap: 1rem;">
+                        <h3>Reporte del Día</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);">Genera el archivo PDF de intervenciones.</p>
+                        
+                        <div class="form-group admin-only" style="margin-top: 1rem;">
+                            <label>Generar reporte para:</label>
+                            <select id="ait-admin-user-filter">
+                                <option value="" disabled selected>Selecciona un Integrante</option>
+                            </select>
+                        </div>
+                        
+                        <div id="ait-today-count" style="font-size: 2rem; font-weight: bold; color: var(--primary-color); text-align: center; margin: 1rem 0;">0 Registros</div>
+                        <button id="btn-generate-ait-pdf" class="btn btn-primary w-100" style="margin-top: auto;">📄 Descargar PDF del Día</button>
+                        <button id="btn-generate-ait-word" class="btn btn-secondary w-100" style="margin-top: 0.5rem; background-color: #2b579a; color: white;">📝 Descargar Semanal (Word)</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contenedor oculto para formatear el PDF de AIT -->
+            <div id="ait-pdf-container" style="display: none; padding: 40px; background: white; color: black; font-family: 'Helvetica', sans-serif;"></div>
 
         </main>
     </div>
