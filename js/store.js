@@ -15,8 +15,11 @@ import {
 export let data = {
     groups: [],
     individuals: [],
+    individuals: [],
     metrics: [],
-    records: []
+    records: [],
+    tasks: [], // Agenda activities
+    it_tickets: [] // Módulo AIT
 };
 
 // Listeners
@@ -41,6 +44,37 @@ export function initStoreListeners(callback) {
     // Escuchar Registros
     onSnapshot(collection(db, "records"), (snapshot) => {
         data.records = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        callback();
+    });
+    // Escuchar Tareas (Agenda)
+    let isInitialTasksLoad = true;
+    onSnapshot(collection(db, "tasks"), (snapshot) => {
+        data.tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        if (!isInitialTasksLoad && window.currentUser && "Notification" in window && Notification.permission === "granted") {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const taskData = change.doc.data();
+                    if (taskData.individualId === window.currentUser.uid) {
+                        const createdDate = new Date(taskData.createdAt);
+                        const now = new Date();
+                        // Solo notificar si se creó en los últimos 2 minutos (evitar spam de cache)
+                        if ((now - createdDate) < 2 * 60 * 1000) {
+                            new Notification("¡Nueva Tarea Asignada! 📋", {
+                                body: taskData.title,
+                                icon: '/icon-192x192.png'
+                            });
+                        }
+                    }
+                }
+            });
+        }
+        isInitialTasksLoad = false;
+        callback();
+    });
+    // Escuchar Tickets AIT
+    onSnapshot(collection(db, "it_tickets"), (snapshot) => {
+        data.it_tickets = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         callback();
     });
 }
@@ -109,6 +143,36 @@ export async function addRecord(individualId, date, metricsData, notes) {
         date, 
         metrics: metricsData, 
         notes: notes || '' 
+    });
+}
+
+// --- Tasks (Agenda) ---
+export async function addTask(individualId, title, date, priority = "2") {
+    await addDoc(collection(db, "tasks"), {
+        individualId,
+        title,
+        date,
+        priority: priority,
+        completed: false,
+        createdAt: new Date().toISOString()
+    });
+}
+
+export async function toggleTaskStatus(taskId, completed) {
+    await updateDoc(doc(db, "tasks", taskId), {
+        completed: completed
+    });
+}
+
+export async function deleteTask(taskId) {
+    await deleteDoc(doc(db, "tasks", taskId));
+}
+
+// --- Soporte AIT ---
+export async function addTicket(ticketData) {
+    await addDoc(collection(db, "it_tickets"), {
+        ...ticketData,
+        createdAt: new Date().toISOString()
     });
 }
 
