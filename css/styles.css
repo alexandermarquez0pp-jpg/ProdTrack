@@ -403,4 +403,30 @@ body.theme-alexander .item-list li {
     border-bottom: 1px solid #333;
 }
 
+/* --- Task List Styles --- */
+.task-list li {
+    display: flex;
+    justify-content: flex-start;
+    gap: 1rem;
+    align-items: center;
+}
+
+.task-list li input[type="checkbox"] {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.task-list li span {
+    flex: 1;
+    font-size: 1rem;
+}
+
+.task-list li.task-completed span {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+
 
