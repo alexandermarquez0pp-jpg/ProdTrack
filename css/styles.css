@@ -25,6 +25,7 @@ body {
     color: var(--text-main);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Layout */
@@ -366,8 +367,6 @@ input:focus, select:focus, textarea:focus {
 }
 .toast.error i {
     color: var(--primary-color);
-}
-
 /* --- Dynamic Themes --- */
 body.theme-patty {
     --primary-color: #F48FB1; /* Rosa pastel */
@@ -428,5 +427,78 @@ body.theme-alexander .item-list li {
     color: var(--text-muted);
 }
 
+/* --- Mobile Layout Adjustments --- */
+.mobile-header {
+    display: none;
+    align-items: center;
+    padding: 1rem;
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.hamburger-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 5px;
+}
+
+.hamburger-line {
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-main);
+    border-radius: 2px;
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 998;
+}
+.sidebar-overlay.open {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .mobile-header {
+        display: flex;
+    }
+    
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 999;
+        width: 260px;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .content-area {
+        padding: 0;
+    }
+    
+    .view {
+        padding: 1rem;
+    }
+    
+    .split-layout {
+        flex-direction: column;
+    }
+}
 
 
