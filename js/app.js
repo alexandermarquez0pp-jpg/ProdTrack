@@ -38,6 +38,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Mobile Sidebar Logic ---
+    const sidebar = document.getElementById('sidebar');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    function toggleSidebar() {
+        if (sidebar && sidebarOverlay) {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('open');
+        }
+    }
+
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', toggleSidebar);
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+    }
+
     // Initialize Authentication
     initAuth();
     initReports();
@@ -48,6 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navBtns.forEach(btn => {
         btn.addEventListener('click', () => {
+            // Ignorar enlaces externos
+            if(btn.tagName === 'A' && btn.hasAttribute('href')) return;
+            
             // Update buttons
             navBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -57,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
             views.forEach(v => v.classList.remove('active'));
             const targetView = document.getElementById(targetId);
             if(targetView) targetView.classList.add('active');
+            
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) {
+                toggleSidebar();
+            }
         });
     });
 
@@ -90,10 +117,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.className = ''; // reset themes
         if (window.currentUserName) {
             const lowerName = window.currentUserName.toLowerCase();
+            const logoImg = document.querySelector('.logo img');
+            
             if (lowerName.includes('patricia') || lowerName.includes('patty') || lowerName.includes('ortiz')) {
                 document.body.classList.add('theme-patty');
+                if(logoImg) logoImg.src = 'logo.png';
             } else if (lowerName.includes('alex') || lowerName.includes('marquez')) {
                 document.body.classList.add('theme-alexander');
+                if(logoImg) logoImg.src = 'logo_dark.png';
+            } else {
+                if(logoImg) logoImg.src = 'logo.png';
             }
         }
 
