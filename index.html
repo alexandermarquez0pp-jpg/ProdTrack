@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="logo.png" type="image/png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#E63946">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -28,11 +29,13 @@
     </div>
 
     <div class="app-container" style="display: none;">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
         <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <div class="logo">
-                <span class="logo-icon"></span>
-                <h1>ProdTrack</h1>
+        <aside class="sidebar" id="sidebar">
+            <div class="logo" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1rem; padding: 1rem 0;">
+                <img src="logo.png" alt="ProdTrack Logo" style="width: 120px; height: 120px; object-fit: contain; border-radius: 16px; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
             </div>
             <nav class="nav-menu">
                 <div id="user-group-indicator" class="member-only" style="background-color: var(--primary-color); color: white; text-align: center; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px; font-weight: bold; font-size: 0.9rem; display: none;"></div>
@@ -52,6 +55,16 @@
 
         <!-- Main Content Area -->
         <main class="content-area">
+            
+            <!-- Mobile Header -->
+            <div class="mobile-header">
+                <button id="mobile-menu-btn" class="hamburger-btn">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                <h2 style="margin:0; font-size:1.2rem; flex:1; text-align:center;">ProdTrack AIT</h2>
+            </div>
             
             <!-- Dashboard View -->
             <section id="dashboard-view" class="view active">

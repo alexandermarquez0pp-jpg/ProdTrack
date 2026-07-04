@@ -23,7 +23,10 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request)
       .then((response) => {
         // Fallback to network if not in cache
-        return response || fetch(event.request);
+        return response || fetch(event.request).catch(() => {
+          // Return generic 404 if fetch fails (e.g. missing favicon)
+          return new Response('Not found', { status: 404, statusText: 'Not found' });
+        });
       })
   );
 });
