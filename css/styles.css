@@ -1,16 +1,26 @@
 :root {
-    --primary-color: #E63946; /* Vivid red */
-    --primary-hover: #D62828; /* Darker red for hover */
-    --bg-main: #F8F9FA; /* Off-white for background */
-    --bg-surface: #FFFFFF; /* Pure white for cards */
-    --text-main: #1D3557; /* Dark blue/gray for text for contrast */
-    --text-muted: #6C757D;
-    --border-color: #E9ECEF;
+    --primary-color: #E63946; /* Vivid red (default brand color) */
+    --primary-hover: #D62828; 
+    
+    /* Default Dark Mode (Alexander's preference) */
+    --bg-main: #121212; 
+    --bg-surface: #1E1E1E; 
+    --text-main: #F8F9FA; 
+    --text-muted: #ADB5BD;
+    --border-color: #333333;
+    
     --radius-lg: 12px;
     --radius-md: 8px;
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 12px rgba(230, 57, 70, 0.1);
-    --shadow-lg: 0 10px 25px rgba(230, 57, 70, 0.15);
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 12px rgba(230, 57, 70, 0.2);
+    --shadow-lg: 0 10px 25px rgba(230, 57, 70, 0.3);
+}
+
+/* Ensure inputs are dark by default */
+input, select, textarea {
+    background-color: #2D2D2D;
+    color: #F8F9FA;
+    border-color: #444;
 }
 
 * {
@@ -37,7 +47,7 @@ body {
 
 /* Sidebar */
 .sidebar {
-    width: 250px;
+    width: 260px;
     background-color: var(--bg-surface);
     border-right: 1px solid var(--border-color);
     display: flex;
@@ -45,6 +55,16 @@ body {
     padding: 1.5rem;
     box-shadow: var(--shadow-sm);
     z-index: 10;
+    position: relative;
+    flex-shrink: 0;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+    overflow-x: hidden;
+}
+
+.sidebar.collapsed {
+    width: 0;
+    padding: 1.5rem 0; /* Mantenemos el padding vertical pero quitamos el horizontal */
+    border-right: none;
 }
 
 .logo {
@@ -103,13 +123,15 @@ body {
 .content-area {
     flex: 1;
     overflow-y: auto;
-    padding: 2.5rem;
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Views */
 .view {
     display: none;
+    padding: 2.5rem;
     animation: fadeIn 0.3s ease;
 }
 
@@ -249,12 +271,60 @@ input:focus, select:focus, textarea:focus {
 }
 
 .btn-secondary {
-    background-color: var(--text-main);
-    color: white;
+    background-color: var(--border-color);
+    color: var(--text-main);
 }
 
 .w-100 {
     width: 100%;
+}
+
+/* Modales (Popups) */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-backdrop.open {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content {
+    background: var(--bg-surface);
+    width: 90%;
+    max-width: 500px;
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-backdrop.open .modal-content {
+    transform: translateY(0);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
 }
 
 /* Lists */
@@ -379,23 +449,18 @@ body.theme-patty {
 }
 
 body.theme-alexander {
-    --primary-color: #007BFF; /* Azul eléctrico */
+    --primary-color: #007BFF; /* Azul eléctrico para Alexander */
     --primary-hover: #0056b3; 
-    --bg-main: #121212; /* Fondo negro */
-    --bg-surface: #1E1E1E; /* Gris muy oscuro para las tarjetas */
-    --text-main: #F8F9FA; /* Texto blanco */
-    --text-muted: #ADB5BD; 
-    --border-color: #333333;
     --shadow-md: 0 4px 12px rgba(0, 123, 255, 0.2);
     --shadow-lg: 0 10px 25px rgba(0, 123, 255, 0.3);
 }
 
-body.theme-alexander input, 
-body.theme-alexander select, 
-body.theme-alexander textarea {
-    background-color: #2D2D2D;
-    color: #F8F9FA;
-    border-color: #444;
+body.theme-patty input, 
+body.theme-patty select, 
+body.theme-patty textarea {
+    background-color: #FFFFFF;
+    color: #37474F;
+    border-color: #E9ECEF;
 }
 
 body.theme-alexander .item-list li {
@@ -427,11 +492,11 @@ body.theme-alexander .item-list li {
     color: var(--text-muted);
 }
 
-/* --- Mobile Layout Adjustments --- */
-.mobile-header {
-    display: none;
+/* --- Unified Top Bar --- */
+.top-bar {
+    display: flex;
     align-items: center;
-    padding: 1rem;
+    padding: 1rem 1.5rem;
     background-color: var(--bg-surface);
     border-bottom: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
@@ -451,6 +516,7 @@ body.theme-alexander .item-list li {
 }
 
 .hamburger-line {
+    display: block;
     width: 25px;
     height: 3px;
     background-color: var(--text-main);
@@ -468,11 +534,13 @@ body.theme-alexander .item-list li {
     display: block;
 }
 
-@media (max-width: 768px) {
-    .mobile-header {
-        display: flex;
+@media (min-width: 769px) {
+    .sidebar-overlay {
+        display: none !important;
     }
-    
+}
+
+@media (max-width: 768px) {
     .sidebar {
         position: fixed;
         left: 0;
@@ -481,23 +549,66 @@ body.theme-alexander .item-list li {
         transform: translateX(-100%);
         transition: transform 0.3s ease;
         z-index: 999;
-        width: 260px;
+        width: 260px !important;
+        padding: 1.5rem !important;
     }
     
     .sidebar.open {
-        transform: translateX(0);
-    }
-    
-    .content-area {
-        padding: 0;
+        transform: translateX(0) !important;
     }
     
     .view {
-        padding: 1rem;
+        padding: 1.5rem;
     }
     
     .split-layout {
         flex-direction: column;
+    }
+    
+    /* Responsive typography & padding */
+    header h2 {
+        font-size: 1.4rem;
+    }
+    
+    .panel {
+        padding: 1rem;
+    }
+    
+    /* Fix inline forms */
+    .form-inline {
+        flex-direction: column;
+    }
+    
+    /* Fix tables overflowing */
+    .report-results {
+        padding: 1rem;
+        overflow-x: auto;
+    }
+    
+    /* Fix toast position */
+    .toast-container {
+        left: 20px;
+        right: 20px;
+        bottom: 20px;
+        align-items: center;
+    }
+    
+    .toast {
+        min-width: unset;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    /* Modal Bottom Sheet on Mobile */
+    .modal-backdrop {
+        align-items: flex-end; /* Alinea abajo */
+    }
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 24px 24px 0 0; /* Bordes redondeados solo arriba */
+        transform: translateY(100%);
+        padding: 2rem 1.5rem;
     }
 }
 
