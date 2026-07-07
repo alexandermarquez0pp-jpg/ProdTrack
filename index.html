@@ -33,7 +33,8 @@
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
         <!-- Sidebar Navigation -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar collapsed" id="sidebar">
+            <button id="close-sidebar-btn" style="position: absolute; top: 10px; right: 10px; padding: 0.5rem; text-align: center; width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; background: none; border: none; color: var(--text-muted);">◀</button>
             <div class="logo" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 1rem; padding: 1rem 0;">
                 <img src="logo.png" alt="ProdTrack Logo" style="width: 120px; height: 120px; object-fit: contain; border-radius: 16px; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
             </div>
@@ -56,14 +57,10 @@
         <!-- Main Content Area -->
         <main class="content-area">
             
-            <!-- Mobile Header -->
-            <div class="mobile-header">
-                <button id="mobile-menu-btn" class="hamburger-btn">
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                </button>
-                <h2 style="margin:0; font-size:1.2rem; flex:1; text-align:center;">ProdTrack AIT</h2>
+            <!-- Top Bar Unificada -->
+            <div class="top-bar">
+                <button id="mobile-menu-btn" class="hamburger-btn" style="font-size: 1.5rem; color: var(--text-main); font-weight: bold;">☰</button>
+                <h2 style="margin:0; font-size:1.2rem; flex:1; text-align:center;">ProdTrack</h2>
             </div>
             
             <!-- Dashboard View -->
@@ -205,20 +202,7 @@
                     <p>Organiza y reporta tus tareas diarias</p>
                 </header>
                 <div class="split-layout">
-                    <div class="panel card-form">
-                        <h3>Añadir Tarea</h3>
-                        <form id="form-add-task">
-                            <div class="form-group">
-                                <label>Actividad / Título</label>
-                                <input type="text" id="task-title" placeholder="Ej: Llamar al cliente..." required>
-                            </div>
-                            <div class="form-group">
-                                <label>Fecha programada</label>
-                                <input type="date" id="task-date" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Agregar a la Agenda</button>
-                        </form>
-                    </div>
+                    <button class="btn btn-primary" onclick="openModal('modal-add-task')" style="margin-bottom: 1rem; width: 100%;">➕ Añadir Nueva Tarea</button>
                     <div class="panel">
                         <h3>Tareas de Hoy</h3>
                         <ul id="list-my-tasks" class="item-list task-list"></ul>
@@ -234,34 +218,7 @@
                 </header>
                 <div class="split-layout">
                     <!-- Assign Task Form -->
-                    <div class="panel card-form">
-                        <h3>Asignar Nueva Tarea</h3>
-                        <form id="form-assign-task">
-                            <div class="form-group">
-                                <label>Título de la Tarea</label>
-                                <input type="text" id="assign-task-title" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Asignar a (Mantén Ctrl presionado para elegir varios)</label>
-                                <select id="assign-task-users" multiple required style="height: 120px;">
-                                    <!-- Usuarios inyectados por JS -->
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Prioridad / Nivel</label>
-                                <select id="assign-task-priority" required>
-                                    <option value="1">1 - Alta</option>
-                                    <option value="2" selected>2 - Media</option>
-                                    <option value="3">3 - Baja</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Fecha programada</label>
-                                <input type="date" id="assign-task-date" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Asignar Tarea</button>
-                        </form>
-                    </div>
+                    <button class="btn btn-primary" onclick="openModal('modal-assign-task')" style="margin-bottom: 1rem; width: 100%;">➕ Asignar Nueva Tarea</button>
 
                     <!-- Supervision Panel -->
                     <div class="panel">
@@ -310,72 +267,9 @@
                     <h2>Soporte Técnico (AIT)</h2>
                     <p>Registro de intervenciones diarias y generación de reportes</p>
                 </header>
-                <div class="split-layout">
-                    <!-- Form Panel -->
-                    <div class="panel card-form member-only" style="flex: 2;">
-                        <h3>Nuevo Registro</h3>
-                        <form id="form-ait" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label>🏢 Localidad / Edificio</label>
-                                <input type="text" id="ait-location" required>
-                            </div>
-                            <div class="form-group">
-                                <label>📝 Nombre del Usuario</label>
-                                <input type="text" id="ait-client" required>
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label>✅ Actividad Realizada</label>
-                                <input type="text" id="ait-activity" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Etiqueta</label>
-                                <input type="text" id="ait-tag" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Marca</label>
-                                <input type="text" id="ait-brand" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Modelo</label>
-                                <input type="text" id="ait-model" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Tipo (Laptop/PC)</label>
-                                <input type="text" id="ait-type" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Usuario / Pool</label>
-                                <input type="text" id="ait-pool" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Indicador</label>
-                                <input type="text" id="ait-indicator" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Correo</label>
-                                <input type="email" id="ait-email" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Gerencia</label>
-                                <input type="text" id="ait-management" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Negocio</label>
-                                <input type="text" id="ait-business" required>
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label>Asesoría y Apoyo</label>
-                                <input type="text" id="ait-support" required>
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label>📷 Tomar Foto / Adjuntar Evidencia (Opcional)</label>
-                                <input type="file" id="ait-photo" accept="image/*" capture="environment" style="background: transparent; color: inherit; border: none; padding: 0.5rem 0;">
-                                <img id="ait-photo-preview" style="max-width: 100%; max-height: 200px; display: none; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border-color);" alt="Preview">
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1; margin-top: 1rem;">
-                                <button type="submit" class="btn btn-primary w-100">Guardar Registro AIT</button>
-                            </div>
-                        </form>
+                    <div style="flex: 2; display: flex; flex-direction: column;">
+                        <button class="btn btn-primary member-only" onclick="openModal('modal-ait')" style="margin-bottom: 1rem; height: fit-content; padding: 1.5rem; font-size: 1.1rem; width: 100%;">📝 Crear Nuevo Registro AIT</button>
+                        <button class="btn btn-secondary member-only" onclick="openModal('modal-ait-history')" style="margin-bottom: 1.5rem; height: fit-content; padding: 1.2rem; font-size: 1.1rem; width: 100%;">🕒 Ver Historial AIT</button>
                     </div>
                     
                     <!-- Report Panel -->
@@ -406,6 +300,141 @@
     <!-- Se elimina store.js y reports.js de aquí porque se importarán dentro de app.js -->
     
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modals (Ocultos por defecto) -->
+    
+    <!-- Modal 1: Añadir Tarea -->
+    <div id="modal-add-task" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-add-task')">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeModal('modal-add-task')">✖</button>
+            <h3 style="margin-bottom: 1.5rem;">Añadir Nueva Tarea</h3>
+            <form id="form-add-task">
+                <div class="form-group">
+                    <label>Actividad / Título</label>
+                    <input type="text" id="task-title" placeholder="Ej: Llamar al cliente..." required>
+                </div>
+                <div class="form-group">
+                    <label>Fecha programada</label>
+                    <input type="date" id="task-date" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Agregar a la Agenda</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Asignar Tarea -->
+    <div id="modal-assign-task" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-assign-task')">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeModal('modal-assign-task')">✖</button>
+            <h3 style="margin-bottom: 1.5rem;">Asignar Nueva Tarea</h3>
+            <form id="form-assign-task">
+                <div class="form-group">
+                    <label>Título de la Tarea</label>
+                    <input type="text" id="assign-task-title" required>
+                </div>
+                <div class="form-group">
+                    <label>Asignar a (Mantén Ctrl presionado para elegir varios)</label>
+                    <select id="assign-task-users" multiple required style="height: 120px;"></select>
+                </div>
+                <div class="form-group">
+                    <label>Prioridad / Nivel</label>
+                    <select id="assign-task-priority" required>
+                        <option value="1">1 - Alta</option>
+                        <option value="2" selected>2 - Media</option>
+                        <option value="3">3 - Baja</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha programada</label>
+                    <input type="date" id="assign-task-date" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Asignar Tarea</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 3: Soporte AIT -->
+    <div id="modal-ait" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-ait')">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeModal('modal-ait')">✖</button>
+            <h3 style="margin-bottom: 1.5rem;">Nuevo Registro AIT</h3>
+            
+            <!-- Smart Paste UI -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: rgba(230, 57, 70, 0.1); border-radius: 8px; border: 1px dashed var(--primary-color);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <strong style="color: var(--primary-color);">🪄 Pegado Inteligente</strong>
+                    <button type="button" class="btn btn-secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="document.getElementById('smart-paste-container').style.display = document.getElementById('smart-paste-container').style.display === 'none' ? 'block' : 'none'">Mostrar / Ocultar</button>
+                </div>
+                <div id="smart-paste-container" style="display: none;">
+                    <textarea id="smart-paste-text" rows="5" placeholder="Pega aquí el mensaje del reporte (ej. Whatsapp)..." style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-main); color: var(--text-main); margin-bottom: 0.5rem; font-family: monospace; font-size: 0.85rem; resize: vertical;"></textarea>
+                    <button type="button" id="btn-smart-paste" class="btn btn-primary w-100" style="padding: 0.5rem;">Extraer y Rellenar</button>
+                </div>
+            </div>
+            <form id="form-ait" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group"><label>🏢 Localidad / Edificio</label><input type="text" id="ait-location" required></div>
+                <div class="form-group"><label>📝 Nombre del Usuario</label><input type="text" id="ait-client" required></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><label>✅ Actividad Realizada</label><input type="text" id="ait-activity" required></div>
+                <div class="form-group"><label>Etiqueta</label><input type="text" id="ait-tag" required></div>
+                <div class="form-group"><label>Marca</label><input type="text" id="ait-brand" required></div>
+                <div class="form-group"><label>Modelo</label><input type="text" id="ait-model" required></div>
+                <div class="form-group"><label>Tipo (Laptop/PC)</label><input type="text" id="ait-type" required></div>
+                <div class="form-group"><label>Usuario / Pool</label><input type="text" id="ait-pool" required></div>
+                <div class="form-group"><label>Indicador</label><input type="text" id="ait-indicator" required></div>
+                <div class="form-group"><label>Correo</label><input type="email" id="ait-email" required></div>
+                <div class="form-group"><label>Gerencia</label><input type="text" id="ait-management" required></div>
+                <div class="form-group"><label>Negocio</label><input type="text" id="ait-business" required></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><label>Asesoría y Apoyo</label><input type="text" id="ait-support" required></div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>📷 Tomar Foto / Adjuntar Evidencia (Opcional)</label>
+                    <input type="file" id="ait-photo" accept="image/*" capture="environment" style="background: transparent; color: inherit; border: none; padding: 0.5rem 0;">
+                    <img id="ait-photo-preview" style="max-width: 100%; max-height: 200px; display: none; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border-color);" alt="Preview">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1; margin-top: 1rem;"><button type="submit" class="btn btn-primary w-100">Guardar Registro AIT</button></div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal 4: Historial AIT -->
+    <div id="modal-ait-history" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-ait-history')">
+        <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
+            <button class="modal-close-btn" onclick="closeModal('modal-ait-history')">✖</button>
+            <h3 style="margin-bottom: 1.5rem;">Mis Registros de Hoy</h3>
+            <ul id="list-ait-today" class="item-list">
+                <p class="empty-state">No tienes registros AIT hoy.</p>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Modal 5: Compartir AIT con Compañero -->
+    <div id="modal-share-ait" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-share-ait')">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeModal('modal-share-ait')">✖</button>
+            <h3 style="margin-bottom: 1.5rem;">Enviar Reporte a Compañero</h3>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Selecciona a un integrante de tu grupo para transferirle una copia de este reporte.</p>
+            <input type="hidden" id="share-ait-ticket-id">
+            <div class="form-group">
+                <select id="share-ait-coworker" required>
+                    <option value="" disabled selected>Selecciona un compañero</option>
+                </select>
+            </div>
+            <button class="btn btn-primary w-100" onclick="window.sendAitToCoworker()">Enviar Reporte</button>
+        </div>
+    </div>
+
+    <!-- Modal 6: Aceptar Reporte AIT (Inbox) -->
+    <div id="modal-accept-ait" class="modal-backdrop" style="z-index: 2000;">
+        <div class="modal-content" style="text-align: center;">
+            <h3 style="margin-bottom: 1rem; color: var(--primary-color);">📥 Nuevo Reporte Recibido</h3>
+            <p id="accept-ait-message" style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.95rem;">
+                <!-- Texto inyectado por JS -->
+            </p>
+            <input type="hidden" id="accept-ait-ticket-id">
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-secondary w-100" onclick="window.rejectAitTicket()" style="background-color: #dc3545; color: white;">Rechazar</button>
+                <button class="btn btn-primary w-100" onclick="window.acceptAitTicket()" style="background-color: #28a745;">Aceptar</button>
+            </div>
+        </div>
+    </div>
 
     <script>
       if ('serviceWorker' in navigator) {
