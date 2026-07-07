@@ -38,24 +38,215 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Mobile Sidebar Logic ---
+    // --- Sidebar Logic (Mobile & Desktop) ---
     const sidebar = document.getElementById('sidebar');
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const closeSidebarBtn = document.getElementById('close-sidebar-btn');
 
     function toggleSidebar() {
-        if (sidebar && sidebarOverlay) {
+        if (sidebar) {
+            sidebar.classList.toggle('collapsed');
             sidebar.classList.toggle('open');
+        }
+        if (sidebarOverlay) {
             sidebarOverlay.classList.toggle('open');
         }
     }
 
-    if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener('click', toggleSidebar);
-    }
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', toggleSidebar);
-    }
+    if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleSidebar);
+    if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+    if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
+
+        // --- Share AIT Ticket (Copiar/Compartir OS nativo) ---
+        window.copyAIT = async (ticketId) => {
+            const ticket = Store.data.it_tickets.find(t => t.id === ticketId);
+            if (!ticket) return;
+
+            const text = `📆 ${ticket.dateStr || ''}
+🏢 ${ticket.location || ''}
+⏱️ ${new Date(ticket.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+📝 ${ticket.client || ''}
+
+✅ ${ticket.activity || ''}
+
+ETIQUETA: ${ticket.tag || ''}
+MARCA: ${ticket.brand || ''}
+MODELO: ${ticket.model || ''}
+Pc/Laptop: ${ticket.type || ''}
+USUARIO/POOL: ${ticket.pool || ''}
+GERENCIA: ${ticket.management || ''}
+INDICADOR: ${ticket.indicator || ''}
+CORREO${ticket.email ? ticket.email : ''}
+NEGOCIO: ${ticket.business || ''}
+Asesoria y apoyo: ${ticket.support || ''}`;
+
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: 'Reporte AIT',
+                        text: text
+                    });
+                } else {
+                    await navigator.clipboard.writeText(text);
+                    window.showToast('Reporte copiado al portapapeles');
+                }
+            } catch (error) {
+                console.error('Error sharing:', error);
+                try {
+                    await navigator.clipboard.writeText(text);
+                    window.showToast('Reporte copiado al portapapeles');
+                } catch (err) {
+                    window.showToast('No se pudo compartir ni copiar el texto.', 'error');
+                }
+            }
+        };
+
+        // --- Compartir AIT (Interno app) ---
+        window.openShareAitModal = (ticketId) => {
+            const ticket = Store.data.it_tickets.find(t => t.id === ticketId);
+            if (!ticket) return;
+            document.getElementById('share-ait-ticket-id').value = ticketId;
+            
+            const select = document.getElementById('share-ait-coworker');
+            select.innerHTML = '<option value="" disabled selected>Selecciona un compañero</option>';
+            
+            // Buscar miembros del mismo grupo
+            const myInd = Store.data.individuals.find(i => i.id === window.currentUser.uid);
+            if (myInd && myInd.groupId) {
+                const groupMates = Store.data.individuals.filter(i => i.groupId === myInd.groupId && i.id !== myInd.id);
+                groupMates.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g.id;
+                    opt.textContent = g.name;
+                    select.appendChild(opt);
+                });
+            }
+            
+            window.openModal('modal-share-ait');
+        };
+
+        window.sendAitToCoworker = async () => {
+            const ticketId = document.getElementById('share-ait-ticket-id').value;
+            const coworkerId = document.getElementById('share-ait-coworker').value;
+            
+            if (!ticketId || !coworkerId) {
+                window.showToast('Selecciona un compañero', 'error');
+                return;
+            }
+            
+            const ticket = Store.data.it_tickets.find(t => t.id === ticketId);
+            if (ticket) {
+                const senderName = window.currentUserName || 'Un compañero';
+                const coworkerName = document.getElementById('share-ait-coworker').options[document.getElementById('share-ait-coworker').selectedIndex].text;
+                
+                const clonedTicket = { 
+                    ...ticket, 
+                    individualId: coworkerId, 
+                    timestamp: Date.now(),
+                    status: 'pending',
+                    senderName: senderName,
+                    originalTicketId: ticket.id
+                };
+                delete clonedTicket.id;
+                
+                try {
+                    if (Store && Store.addTicket) {
+                        await Store.addTicket(clonedTicket);
+                        
+                        // Update the original ticket
+                        if (Store.updateTicket) {
+                            await Store.updateTicket(ticket.id, { 
+                                sharedTo: coworkerName, 
+                                sharedStatus: 'pending' 
+                            });
+                            ticket.sharedTo = coworkerName;
+                            ticket.sharedStatus = 'pending';
+                        }
+                        
+                        window.showToast('Reporte enviado a tu compañero');
+                        window.closeModal('modal-share-ait');
+                    }
+                } catch (e) {
+                    console.error('Error enviando reporte:', e);
+                    window.showToast('Error enviando reporte', 'error');
+                }
+            }
+        };
+
+        window.acceptAitTicket = async () => {
+            const ticketId = document.getElementById('accept-ait-ticket-id').value;
+            if (!ticketId) return;
+            
+            try {
+                if (Store && Store.updateTicket) {
+                    await Store.updateTicket(ticketId, { status: 'accepted' });
+                    
+                    const t = Store.data.it_tickets.find(x => x.id === ticketId);
+                    if (t) {
+                        t.status = 'accepted';
+                        // Actualizar ticket original si existe
+                        if (t.originalTicketId) {
+                            await Store.updateTicket(t.originalTicketId, { sharedStatus: 'accepted' });
+                        }
+                    }
+                    
+                    window.showToast('Reporte aceptado y guardado en tu historial.');
+                    window.closeModal('modal-accept-ait');
+                }
+            } catch (e) {
+                console.error(e);
+                window.showToast('Error aceptando reporte', 'error');
+            }
+        };
+
+        window.rejectAitTicket = async () => {
+            const ticketId = document.getElementById('accept-ait-ticket-id').value;
+            if (!ticketId) return;
+            
+            try {
+                if (Store && Store.deleteTicket) {
+                    const t = Store.data.it_tickets.find(x => x.id === ticketId);
+                    if (t && t.originalTicketId && Store.updateTicket) {
+                        // Notificar al emisor que fue rechazado
+                        await Store.updateTicket(t.originalTicketId, { sharedStatus: 'rejected' });
+                    }
+                    
+                    await Store.deleteTicket(ticketId);
+                    window.showToast('Reporte rechazado y eliminado.');
+                    
+                    window.closeModal('modal-accept-ait');
+                }
+            } catch (e) {
+                console.error(e);
+                window.showToast('Error rechazando reporte', 'error');
+            }
+        };
+
+    // --- Modal Logic ---
+    window.openModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if(modal) {
+            modal.classList.add('open');
+            // Prevent body scroll on mobile when modal is open
+            document.body.style.overflow = 'hidden';
+        }
+    };
+
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if(modal) {
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    };
+
+    window.closeModalOnOutsideClick = function(event, modalId) {
+        // If they click exactly on the backdrop (not inside modal-content)
+        if (event.target.id === modalId) {
+            window.closeModal(modalId);
+        }
+    };
 
     // Initialize Authentication
     initAuth();
@@ -442,13 +633,86 @@ document.addEventListener('DOMContentLoaded', () => {
             window.renderAdminAgenda();
         }
 
+        // --- Check for pending AIT tickets (Inbox) ---
+        if (!isAdmin && window.currentUser && window.currentUser.uid) {
+            const pendingTickets = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.status === 'pending');
+            if (pendingTickets.length > 0) {
+                // Show the modal for the first pending ticket
+                const firstPending = pendingTickets[0];
+                const senderName = firstPending.senderName || 'Un compañero';
+                const activityName = firstPending.activity || 'actividad sin título';
+                
+                document.getElementById('accept-ait-ticket-id').value = firstPending.id;
+                document.getElementById('accept-ait-message').innerHTML = `<strong>${senderName}</strong> te ha transferido un reporte AIT de <em>"${activityName}"</em>.<br><br>¿Deseas agregarlo a tu historial?`;
+                window.openModal('modal-accept-ait');
+            }
+        }
+
         // 8. AIT Support View updates
+        const aitTodayCount = document.getElementById('ait-today-count');
+        const listAitToday = document.getElementById('list-ait-today');
+        
+        const today = new Date().toLocaleDateString('es-ES');
+        let myTicketsToday = [];
+        
         if (!isAdmin) {
-            const aitTodayCount = document.getElementById('ait-today-count');
-            if (aitTodayCount) {
-                const today = new Date().toLocaleDateString('es-ES');
-                const myTicketsToday = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.dateStr === today);
-                aitTodayCount.textContent = `${myTicketsToday.length} Registros Hoy`;
+            myTicketsToday = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.dateStr === today && t.status !== 'pending');
+            if (aitTodayCount) aitTodayCount.textContent = `${myTicketsToday.length} Registros Hoy`;
+        } else {
+            // Para admin, si no hay filtro, mostrar todos?
+            // Depende de la lógica. Por ahora dejamos el count global o vacío si no selecciona.
+            if (aitTodayCount) aitTodayCount.textContent = `${it_tickets.filter(t => t.dateStr === today).length} Registros Hoy (Global)`;
+            
+            // Administrador también debería ver sus propios reportes si se añadió a sí mismo, pero generalmente list-ait-today es para los propios reportes.
+            myTicketsToday = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.dateStr === today && t.status !== 'pending');
+        }
+
+        if (listAitToday) {
+            listAitToday.innerHTML = '';
+            if (myTicketsToday.length === 0) {
+                listAitToday.innerHTML = '<p class="empty-state">No tienes registros AIT hoy.</p>';
+            } else {
+                myTicketsToday.forEach(t => {
+                    const li = document.createElement('li');
+                    li.style.display = 'flex';
+                    li.style.flexDirection = 'column';
+                    li.style.gap = '0.5rem';
+                    li.style.padding = '1rem';
+                    li.style.backgroundColor = 'var(--bg-main)';
+                    li.style.borderRadius = 'var(--radius-md)';
+                    li.style.marginBottom = '0.5rem';
+                    li.style.border = '1px solid var(--border-color)';
+                    
+                    let shareBadge = '';
+                    if (t.sharedTo && t.sharedStatus) {
+                        let badgeColor = '#ffc107'; // pending (amarillo)
+                        let badgeText = `⏳ Enviado a ${t.sharedTo} (En espera)`;
+                        if (t.sharedStatus === 'accepted') {
+                            badgeColor = '#28a745'; // verde
+                            badgeText = `✅ Aceptado por ${t.sharedTo}`;
+                        } else if (t.sharedStatus === 'rejected') {
+                            badgeColor = '#dc3545'; // rojo
+                            badgeText = `❌ Rechazado por ${t.sharedTo}`;
+                        }
+                        shareBadge = `<div style="font-size: 0.8rem; margin-top: 0.5rem; padding: 0.25rem 0.5rem; background-color: ${badgeColor}; color: ${badgeColor === '#ffc107' ? '#000' : '#fff'}; border-radius: 4px; display: inline-block;">${badgeText}</div>`;
+                    }
+
+                    li.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong style="color: var(--primary-color);">🏢 ${t.location}</strong>
+                                <div style="font-size: 0.9rem;">📝 ${t.client}</div>
+                                <div style="font-size: 0.9rem; margin-top: 0.25rem;">✅ ${t.activity}</div>
+                                ${shareBadge}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button class="btn btn-secondary" onclick="window.copyAIT('${t.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; flex: 1;">📋 Copiar Info</button>
+                            <button class="btn btn-primary" onclick="window.openShareAitModal('${t.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; flex: 1;">📲 Enviar a Compa</button>
+                        </div>
+                    `;
+                    listAitToday.appendChild(li);
+                });
             }
         }
         
@@ -558,6 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await Store.addTask(window.currentUser.uid, title, date);
                 window.showToast('Tarea agregada a la agenda');
                 document.getElementById('task-title').value = '';
+                window.closeModal('modal-add-task');
             }
         });
     }
@@ -626,6 +891,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 window.showToast(`Tarea asignada a ${selectedIds.length} integrante(s)`);
                 document.getElementById('assign-task-title').value = '';
+                window.closeModal('modal-assign-task');
             }
         });
     }
@@ -636,6 +902,50 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adminDate) adminDate.addEventListener('change', window.renderAdminAgenda);
 
     // --- AIT Support Logic ---
+    const btnSmartPaste = document.getElementById('btn-smart-paste');
+    if (btnSmartPaste) {
+        btnSmartPaste.addEventListener('click', () => {
+            const text = document.getElementById('smart-paste-text').value;
+            if (!text) return;
+
+            const patterns = [
+                { id: 'ait-location', regex: /(?:🏢|Localidad|Edificio|Sede)[:\s]*([^\n]+)/i },
+                { id: 'ait-client', regex: /(?:📝|Usuario|Cliente|Nombre)[:\s]*([^\n]+)/i },
+                { id: 'ait-activity', regex: /(?:✅|Actividad|Falla|Realizado)[:\s]*([^\n]+)/i },
+                { id: 'ait-tag', regex: /ETIQUETA[:\s]*([^\n]+)/i },
+                { id: 'ait-brand', regex: /MARCA[:\s]*([^\n]+)/i },
+                { id: 'ait-model', regex: /MODELO[:\s]*([^\n]+)/i },
+                { id: 'ait-type', regex: /P[cC]\/Laptop[:\s]*([^\n]+)/i },
+                { id: 'ait-pool', regex: /USUARIO\/POOL[:\s]*([^\n]*)/i },
+                { id: 'ait-indicator', regex: /INDICADOR[:\s]*([^\n]+)/i },
+                { id: 'ait-email', regex: /CORREO[:\s]*([^\n]+)/i },
+                { id: 'ait-management', regex: /GERENCIA[:\s]*([^\n]+)/i },
+                { id: 'ait-business', regex: /NEGOCIO[:\s]*([^\n]+)/i },
+                { id: 'ait-support', regex: /Asesoria y apoyo[:\s]*([^\n]+)/i }
+            ];
+
+            let foundCount = 0;
+            patterns.forEach(p => {
+                const match = text.match(p.regex);
+                if (match && match[1]) {
+                    const val = match[1].trim();
+                    const input = document.getElementById(p.id);
+                    if (input) {
+                        input.value = val;
+                        foundCount++;
+                    }
+                }
+            });
+
+            if (foundCount > 0) {
+                window.showToast(`Se han autocompletado ${foundCount} campos.`);
+                document.getElementById('smart-paste-container').style.display = 'none';
+                document.getElementById('smart-paste-text').value = '';
+            } else {
+                window.showToast('No se encontró información reconocible.', 'error');
+            }
+        });
+    }
     let currentAitPhotoBase64 = null;
     const aitPhotoInput = document.getElementById('ait-photo');
     const aitPhotoPreview = document.getElementById('ait-photo-preview');
@@ -687,6 +997,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formAit) {
         formAit.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            if (!confirm('¿Estás seguro de registrar este reporte con los datos ingresados? Verifica que todo esté correcto.')) {
+                return;
+            }
+
             const ticketData = {
                 individualId: window.currentUser.uid,
                 internName: window.currentUserName || 'Pasante',
@@ -713,6 +1028,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.reset();
             currentAitPhotoBase64 = null;
             if (aitPhotoPreview) aitPhotoPreview.style.display = 'none';
+            window.closeModal('modal-ait');
         });
     }
 
@@ -785,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 margin:       10,
                 filename:     `Reporte_AIT_${targetUserName}_${today.replace(/\\//g, '-')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
@@ -860,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p><b>Equipo:</b> ${t.type} ${t.brand} ${t.model} - <b>Etiqueta:</b> ${t.tag} - <b>Pool:</b> ${t.pool}</p>
                         <p><b>Gerencia/Negocio:</b> ${t.management} / ${t.business}</p>
                         <p><b>Asesoría:</b> ${t.support}</p>
-                        ${t.photoBase64 ? `<p><img src="${t.photoBase64}" width="400"></p>` : ''}
+                        ${t.photoBase64 ? `<p><i>[Imagen adjunta en el reporte original]</i></p>` : ''}
                     </div>
                 `;
             });
@@ -870,7 +1186,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const postHtml = "</body></html>";
             const fullHtml = preHtml + wordHtml + postHtml;
 
-            const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
+            // Cambiamos el mime-type para mejor compatibilidad con Word y quitamos las imagenes base64 que lo corrompen
+            const blob = new Blob(['\ufeff', fullHtml], { type: 'application/vnd.ms-word;charset=utf-8' });
             const downloadLink = document.createElement("a");
             downloadLink.href = URL.createObjectURL(blob);
             downloadLink.download = `Reporte_Semanal_AIT_${targetUserName.replace(/ /g, '_')}.doc`;

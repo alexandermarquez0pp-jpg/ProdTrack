@@ -176,6 +176,14 @@ export async function addTicket(ticketData) {
     });
 }
 
+export async function updateTicket(ticketId, updateData) {
+    await updateDoc(doc(db, "it_tickets", ticketId), updateData);
+}
+
+export async function deleteTicket(ticketId) {
+    await deleteDoc(doc(db, "it_tickets", ticketId));
+}
+
 export function getGroupById(id) {
     return data.groups.find(g => g.id === id);
 }
