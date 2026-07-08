@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prodtracker-v16';
+const CACHE_NAME = 'prodtracker-v32';
 const ASSETS = [
   './',
   './index.html',

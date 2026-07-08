@@ -202,6 +202,23 @@
                     <p>Organiza y reporta tus tareas diarias</p>
                 </header>
                 <div class="split-layout">
+                    <!-- Dashboard Personal -->
+                    <div id="user-dashboard" class="panel" style="margin-bottom: 1rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px;">
+                        <h3 style="margin-bottom: 0.5rem; color: var(--primary-color);">📈 Mi Rendimiento AIT</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span>Hoy:</span>
+                            <span id="dashboard-today-count" style="font-weight: bold; font-size: 1.2rem;">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span>Esta Semana:</span>
+                            <span id="dashboard-week-count" style="font-weight: bold; font-size: 1.2rem;">0</span>
+                        </div>
+                        <div style="width: 100%; background-color: var(--border-color); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="dashboard-progress-bar" style="width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease;"></div>
+                        </div>
+                        <p style="text-align: right; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem;">Meta semanal: 15</p>
+                    </div>
+
                     <button class="btn btn-primary" onclick="openModal('modal-add-task')" style="margin-bottom: 1rem; width: 100%;">➕ Añadir Nueva Tarea</button>
                     <div class="panel">
                         <h3>Tareas de Hoy</h3>
@@ -268,7 +285,7 @@
                     <p>Registro de intervenciones diarias y generación de reportes</p>
                 </header>
                     <div style="flex: 2; display: flex; flex-direction: column;">
-                        <button class="btn btn-primary member-only" onclick="openModal('modal-ait')" style="margin-bottom: 1rem; height: fit-content; padding: 1.5rem; font-size: 1.1rem; width: 100%;">📝 Crear Nuevo Registro AIT</button>
+                        <button class="btn btn-primary member-only" onclick="window.openNewAitModal()" style="margin-bottom: 1rem; height: fit-content; padding: 1.5rem; font-size: 1.1rem; width: 100%;">📝 Crear Nuevo Registro AIT</button>
                         <button class="btn btn-secondary member-only" onclick="openModal('modal-ait-history')" style="margin-bottom: 1.5rem; height: fit-content; padding: 1.2rem; font-size: 1.1rem; width: 100%;">🕒 Ver Historial AIT</button>
                     </div>
                     
@@ -292,7 +309,7 @@
             </section>
 
             <!-- Contenedor oculto para formatear el PDF de AIT -->
-            <div id="ait-pdf-container" style="display: none; padding: 40px; background: white; color: black; font-family: 'Helvetica', sans-serif;"></div>
+            <div id="ait-pdf-container" style="position: absolute; left: -9999px; top: 0; width: 800px; padding: 40px; background: white; color: black; font-family: 'Helvetica', sans-serif; z-index: -1;"></div>
 
         </main>
     </div>
@@ -359,6 +376,19 @@
             <button class="modal-close-btn" onclick="closeModal('modal-ait')">✖</button>
             <h3 style="margin-bottom: 1.5rem;">Nuevo Registro AIT</h3>
             
+            <!-- Quick Templates UI -->
+            <div style="margin-bottom: 1.5rem;">
+                <label style="font-weight: bold; color: var(--text-muted); font-size: 0.9rem;">⚡ Plantillas Rápidas:</label>
+                <select id="ait-quick-templates" class="form-group" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-main); margin-top: 0.3rem;">
+                    <option value="">-- Selecciona una plantilla --</option>
+                    <option value="mantenimiento">Mantenimiento Preventivo de PC</option>
+                    <option value="formateo">Formateo e Instalación de Windows</option>
+                    <option value="red">Revisión de Punto de Red / Conectividad</option>
+                    <option value="impresora">Configuración/Revisión de Impresora</option>
+                    <option value="respaldo">Respaldo de Información (Backup)</option>
+                </select>
+            </div>
+            
             <!-- Smart Paste UI -->
             <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: rgba(230, 57, 70, 0.1); border-radius: 8px; border: 1px dashed var(--primary-color);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -371,6 +401,9 @@
                 </div>
             </div>
             <form id="form-ait" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <input type="hidden" id="ait-edit-id">
+                <input type="hidden" id="ait-date">
+                <input type="hidden" id="ait-time">
                 <div class="form-group"><label>🏢 Localidad / Edificio</label><input type="text" id="ait-location" required></div>
                 <div class="form-group"><label>📝 Nombre del Usuario</label><input type="text" id="ait-client" required></div>
                 <div class="form-group" style="grid-column: 1 / -1;"><label>✅ Actividad Realizada</label><input type="text" id="ait-activity" required></div>
@@ -398,7 +431,19 @@
     <div id="modal-ait-history" class="modal-backdrop" onclick="closeModalOnOutsideClick(event, 'modal-ait-history')">
         <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <button class="modal-close-btn" onclick="closeModal('modal-ait-history')">✖</button>
-            <h3 style="margin-bottom: 1.5rem;">Mis Registros de Hoy</h3>
+            <h3 style="margin-bottom: 0.5rem;">Mis Registros</h3>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight: bold; color: var(--primary-color);">📅 Fecha:</label>
+                <input type="date" id="ait-history-date-filter" onchange="window.updateUI()" style="flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+                <button type="button" id="btn-export-csv" class="btn btn-secondary" style="padding: 0.5rem; display: flex; align-items: center; gap: 0.3rem;" title="Exportar a Excel (CSV)">📊 CSV</button>
+            </div>
+            <div style="margin-bottom: 0.5rem; display: flex; gap: 0.5rem;">
+                <input type="text" id="ait-history-search" oninput="window.updateUI()" placeholder="🔍 Buscar por cliente, equipo, etiqueta o actividad..." style="flex: 1; padding: 0.6rem; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.9rem;">
+            </div>
+            <div id="ait-multi-share-container" style="display: none; margin-bottom: 1rem; padding: 0.5rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; align-items: center; justify-content: space-between;">
+                <span id="ait-multi-share-count" style="font-weight: bold; color: var(--primary-color);">0 Seleccionados</span>
+                <button class="btn btn-primary" onclick="window.openShareAitModalMultiple()" style="padding: 0.4rem 0.8rem;">📲 Enviar Selección</button>
+            </div>
             <ul id="list-ait-today" class="item-list">
                 <p class="empty-state">No tienes registros AIT hoy.</p>
             </ul>
@@ -417,6 +462,9 @@
                     <option value="" disabled selected>Selecciona un compañero</option>
                 </select>
             </div>
+            <div class="form-group">
+                <textarea id="share-ait-note" rows="3" placeholder="Añade un comentario rápido (Opcional)" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);"></textarea>
+            </div>
             <button class="btn btn-primary w-100" onclick="window.sendAitToCoworker()">Enviar Reporte</button>
         </div>
     </div>
@@ -425,10 +473,13 @@
     <div id="modal-accept-ait" class="modal-backdrop" style="z-index: 2000;">
         <div class="modal-content" style="text-align: center;">
             <h3 style="margin-bottom: 1rem; color: var(--primary-color);">📥 Nuevo Reporte Recibido</h3>
-            <p id="accept-ait-message" style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.95rem;">
+            <p id="accept-ait-message" style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.95rem;">
                 <!-- Texto inyectado por JS -->
             </p>
-            <input type="hidden" id="accept-ait-ticket-id">
+            <div id="accept-ait-note-container" style="display: none; max-height: 150px; overflow-y: auto; background-color: var(--bg-secondary); border-left: 4px solid var(--primary-color); padding: 10px; margin-bottom: 1.5rem; text-align: left; font-size: 0.9rem; font-style: italic; color: var(--text-main);">
+                <!-- Notas inyectadas por JS -->
+            </div>
+            <input type="hidden" id="accept-ait-ticket-ids">
             <div style="display: flex; gap: 1rem;">
                 <button class="btn btn-secondary w-100" onclick="window.rejectAitTicket()" style="background-color: #dc3545; color: white;">Rechazar</button>
                 <button class="btn btn-primary w-100" onclick="window.acceptAitTicket()" style="background-color: #28a745;">Aceptar</button>
