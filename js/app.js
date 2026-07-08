@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const text = `📆 ${ticket.dateStr || ''}
 🏢 ${ticket.location || ''}
-⏱️ ${new Date(ticket.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+⏱️ ${ticket.timeStr || ''}
 📝 ${ticket.client || ''}
 
 ✅ ${ticket.activity || ''}
@@ -104,8 +104,17 @@ Asesoria y apoyo: ${ticket.support || ''}`;
 
         // --- Compartir AIT (Interno app) ---
         window.openShareAitModal = (ticketId) => {
-            const ticket = Store.data.it_tickets.find(t => t.id === ticketId);
-            if (!ticket) return;
+            let isMulti = false;
+            try {
+                const ids = JSON.parse(ticketId);
+                if (Array.isArray(ids)) isMulti = true;
+            } catch (e) {}
+
+            if (!isMulti) {
+                const ticket = Store.data.it_tickets.find(t => t.id === ticketId);
+                if (!ticket) return;
+            }
+            
             document.getElementById('share-ait-ticket-id').value = ticketId;
             
             const select = document.getElementById('share-ait-coworker');
@@ -127,103 +136,142 @@ Asesoria y apoyo: ${ticket.support || ''}`;
         };
 
         window.sendAitToCoworker = async () => {
-            const ticketId = document.getElementById('share-ait-ticket-id').value;
+            const ticketIdStr = document.getElementById('share-ait-ticket-id').value;
             const coworkerId = document.getElementById('share-ait-coworker').value;
             
-            if (!ticketId || !coworkerId) {
+            if (!ticketIdStr || !coworkerId) {
                 window.showToast('Selecciona un compañero', 'error');
                 return;
             }
             
-            const ticket = Store.data.it_tickets.find(t => t.id === ticketId);
-            if (ticket) {
-                const senderName = window.currentUserName || 'Un compañero';
-                const coworkerName = document.getElementById('share-ait-coworker').options[document.getElementById('share-ait-coworker').selectedIndex].text;
-                
-                const clonedTicket = { 
-                    ...ticket, 
-                    individualId: coworkerId, 
-                    timestamp: Date.now(),
-                    status: 'pending',
-                    senderName: senderName,
-                    originalTicketId: ticket.id
-                };
-                delete clonedTicket.id;
-                
-                try {
-                    if (Store && Store.addTicket) {
-                        await Store.addTicket(clonedTicket);
-                        
-                        // Update the original ticket
-                        if (Store.updateTicket) {
-                            await Store.updateTicket(ticket.id, { 
-                                sharedTo: coworkerName, 
-                                sharedStatus: 'pending' 
-                            });
-                            ticket.sharedTo = coworkerName;
-                            ticket.sharedStatus = 'pending';
+            let idsToProcess = [];
+            try {
+                idsToProcess = JSON.parse(ticketIdStr);
+            } catch(e) {
+                idsToProcess = [ticketIdStr];
+            }
+            
+            const senderName = window.currentUserName || 'Un compañero';
+            const coworkerName = document.getElementById('share-ait-coworker').options[document.getElementById('share-ait-coworker').selectedIndex].text;
+            const sharedNote = document.getElementById('share-ait-note') ? document.getElementById('share-ait-note').value.trim() : '';
+
+            let processedCount = 0;
+
+            for (const tId of idsToProcess) {
+                const ticket = Store.data.it_tickets.find(t => t.id === tId);
+                if (ticket) {
+                    const clonedTicket = { 
+                        ...ticket, 
+                        individualId: coworkerId, 
+                        timestamp: Date.now(),
+                        status: 'pending',
+                        senderName: senderName,
+                        originalTicketId: ticket.id,
+                        sharedNote: sharedNote
+                    };
+                    delete clonedTicket.id;
+                    
+                    try {
+                        if (Store && Store.addTicket) {
+                            await Store.addTicket(clonedTicket);
+                            
+                            // Update the original ticket
+                            if (Store.updateTicket) {
+                                await Store.updateTicket(ticket.id, { 
+                                    sharedTo: coworkerName, 
+                                    sharedStatus: 'pending' 
+                                });
+                                ticket.sharedTo = coworkerName;
+                                ticket.sharedStatus = 'pending';
+                            }
+                            processedCount++;
                         }
-                        
-                        window.showToast('Reporte enviado a tu compañero');
-                        window.closeModal('modal-share-ait');
+                    } catch (e) {
+                        console.error('Error enviando reporte:', e);
                     }
-                } catch (e) {
-                    console.error('Error enviando reporte:', e);
-                    window.showToast('Error enviando reporte', 'error');
                 }
+            }
+            
+            if (processedCount > 0) {
+                window.showToast(`Se enviaron ${processedCount} reporte(s) a tu compañero`);
+                window.closeModal('modal-share-ait');
+                
+                // Deseleccionar los checkboxes si fue envío múltiple
+                document.querySelectorAll('.ait-multi-select-checkbox').forEach(cb => cb.checked = false);
+                window.handleAitMultiSelect();
+            } else {
+                window.showToast('No se pudo enviar los reportes', 'error');
             }
         };
 
         window.acceptAitTicket = async () => {
-            const ticketId = document.getElementById('accept-ait-ticket-id').value;
-            if (!ticketId) return;
+            const ticketIdsStr = document.getElementById('accept-ait-ticket-ids').value;
+            if (!ticketIdsStr) return;
             
             try {
-                if (Store && Store.updateTicket) {
-                    await Store.updateTicket(ticketId, { status: 'accepted' });
-                    
-                    const t = Store.data.it_tickets.find(x => x.id === ticketId);
-                    if (t) {
-                        t.status = 'accepted';
-                        // Actualizar ticket original si existe
-                        if (t.originalTicketId) {
-                            await Store.updateTicket(t.originalTicketId, { sharedStatus: 'accepted' });
+                const ids = JSON.parse(ticketIdsStr);
+                for (const tId of ids) {
+                    if (Store && Store.updateTicket) {
+                        await Store.updateTicket(tId, { status: 'accepted' });
+                        
+                        const t = Store.data.it_tickets.find(x => x.id === tId);
+                        if (t) {
+                            t.status = 'accepted';
+                            // Actualizar ticket original si existe
+                            if (t.originalTicketId) {
+                                await Store.updateTicket(t.originalTicketId, { sharedStatus: 'accepted' });
+                            }
                         }
                     }
-                    
-                    window.showToast('Reporte aceptado y guardado en tu historial.');
-                    window.closeModal('modal-accept-ait');
                 }
+                window.showToast(`${ids.length} reporte(s) aceptado(s) y guardado(s) en tu historial.`);
+                window.closeModal('modal-accept-ait');
             } catch (e) {
                 console.error(e);
-                window.showToast('Error aceptando reporte', 'error');
+                window.showToast('Error aceptando reportes', 'error');
             }
         };
 
         window.rejectAitTicket = async () => {
-            const ticketId = document.getElementById('accept-ait-ticket-id').value;
-            if (!ticketId) return;
+            const ticketIdsStr = document.getElementById('accept-ait-ticket-ids').value;
+            if (!ticketIdsStr) return;
             
             try {
-                if (Store && Store.deleteTicket) {
-                    const t = Store.data.it_tickets.find(x => x.id === ticketId);
-                    if (t && t.originalTicketId && Store.updateTicket) {
-                        // Notificar al emisor que fue rechazado
-                        await Store.updateTicket(t.originalTicketId, { sharedStatus: 'rejected' });
+                const ids = JSON.parse(ticketIdsStr);
+                for (const tId of ids) {
+                    if (Store && Store.deleteTicket) {
+                        const t = Store.data.it_tickets.find(x => x.id === tId);
+                        if (t && t.originalTicketId && Store.updateTicket) {
+                            // Notificar al emisor que fue rechazado
+                            await Store.updateTicket(t.originalTicketId, { sharedStatus: 'rejected' });
+                        }
+                        await Store.deleteTicket(tId);
                     }
-                    
-                    await Store.deleteTicket(ticketId);
-                    window.showToast('Reporte rechazado y eliminado.');
-                    
-                    window.closeModal('modal-accept-ait');
                 }
+                window.showToast(`${ids.length} reporte(s) rechazado(s) y eliminado(s).`);
+                window.closeModal('modal-accept-ait');
             } catch (e) {
                 console.error(e);
-                window.showToast('Error rechazando reporte', 'error');
+                window.showToast('Error rechazando reportes', 'error');
             }
         };
 
     // --- Modal Logic ---
+    window.openNewAitModal = function() {
+        const formAit = document.getElementById('form-ait');
+        if (formAit) {
+            formAit.reset();
+            document.getElementById('ait-edit-id').value = '';
+            if (document.getElementById('ait-date')) document.getElementById('ait-date').value = '';
+            if (document.getElementById('ait-time')) document.getElementById('ait-time').value = '';
+            if (document.getElementById('ait-quick-templates')) document.getElementById('ait-quick-templates').value = '';
+            if (document.getElementById('smart-paste-text')) document.getElementById('smart-paste-text').value = '';
+            const preview = document.getElementById('ait-photo-preview');
+            if (preview) preview.style.display = 'none';
+        }
+        window.openModal('modal-ait');
+    };
+
     window.openModal = function(modalId) {
         const modal = document.getElementById(modalId);
         if(modal) {
@@ -633,17 +681,90 @@ Asesoria y apoyo: ${ticket.support || ''}`;
             window.renderAdminAgenda();
         }
 
+        const normalizeDateStr = (dateStr) => {
+            if (!dateStr) return '';
+            // Reemplazar guiones por barras por si el OS usa formato con guiones
+            const normalized = dateStr.replace(/-/g, '/');
+            const parts = normalized.split('/');
+            if (parts.length === 3) {
+                let year = parts[2];
+                if (year.length === 2) year = '20' + year; // Convertir 26 a 2026
+                return `${parseInt(parts[0], 10)}/${parseInt(parts[1], 10)}/${year}`;
+            }
+            return normalized;
+        };
+
+        // --- Actualizar Dashboard Personal ---
+        if (!isAdmin && window.currentUser) {
+            const todayStr = normalizeDateStr(new Date().toLocaleDateString('es-ES'));
+            const todayCount = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.status !== 'pending' && normalizeDateStr(t.dateStr) === todayStr).length;
+            
+            // Calc current week count
+            const curr = new Date();
+            const first = curr.getDate() - curr.getDay() + 1; // Lunes
+            const last = first + 6; // Domingo
+            const firstDay = new Date(curr.setDate(first)).setHours(0,0,0,0);
+            const lastDay = new Date(curr.setDate(last)).setHours(23,59,59,999);
+            
+            const weekCount = it_tickets.filter(t => {
+                if (t.individualId !== window.currentUser.uid || t.status === 'pending') return false;
+                // Usar normalizeDateStr para limpiar guiones y arreglar el año
+                const normDate = normalizeDateStr(t.dateStr); 
+                const parts = normDate.split('/');
+                if (parts.length !== 3) return false;
+                const tDate = new Date(parts[2], parts[1]-1, parts[0]).getTime();
+                return tDate >= firstDay && tDate <= lastDay;
+            }).length;
+
+            const dashToday = document.getElementById('dashboard-today-count');
+            const dashWeek = document.getElementById('dashboard-week-count');
+            const dashBar = document.getElementById('dashboard-progress-bar');
+            
+            if (dashToday) dashToday.textContent = todayCount;
+            if (dashWeek) dashWeek.textContent = weekCount;
+            if (dashBar) {
+                const goal = 15;
+                let percent = (weekCount / goal) * 100;
+                if (percent > 100) percent = 100;
+                dashBar.style.width = `${percent}%`;
+                if (percent >= 100) dashBar.style.backgroundColor = '#28a745'; // verde
+                else dashBar.style.backgroundColor = 'var(--primary-color)'; // rojo/original
+            }
+        }
+
         // --- Check for pending AIT tickets (Inbox) ---
         if (!isAdmin && window.currentUser && window.currentUser.uid) {
             const pendingTickets = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.status === 'pending');
             if (pendingTickets.length > 0) {
-                // Show the modal for the first pending ticket
-                const firstPending = pendingTickets[0];
-                const senderName = firstPending.senderName || 'Un compañero';
-                const activityName = firstPending.activity || 'actividad sin título';
+                // Collect all ticket IDs
+                const ids = pendingTickets.map(t => t.id);
+                document.getElementById('accept-ait-ticket-ids').value = JSON.stringify(ids);
                 
-                document.getElementById('accept-ait-ticket-id').value = firstPending.id;
-                document.getElementById('accept-ait-message').innerHTML = `<strong>${senderName}</strong> te ha transferido un reporte AIT de <em>"${activityName}"</em>.<br><br>¿Deseas agregarlo a tu historial?`;
+                // Build dynamic message
+                let uniqueSenders = [...new Set(pendingTickets.map(t => t.senderName || 'Un compañero'))];
+                let sendersText = uniqueSenders.join(', ');
+                
+                const msgEl = document.getElementById('accept-ait-message');
+                if (pendingTickets.length === 1) {
+                    const t = pendingTickets[0];
+                    msgEl.innerHTML = `<strong>${t.senderName || 'Un compañero'}</strong> te ha transferido un reporte AIT de <em>"${t.activity || 'actividad sin título'}"</em>.<br><br>¿Deseas agregarlo a tu historial?`;
+                } else {
+                    msgEl.innerHTML = `Tienes <strong>${pendingTickets.length} reportes nuevos</strong> de ${sendersText}.<br><br>¿Deseas agregarlos a tu historial?`;
+                }
+                
+                const noteContainer = document.getElementById('accept-ait-note-container');
+                const ticketsWithNotes = pendingTickets.filter(t => t.sharedNote);
+                if (ticketsWithNotes.length > 0) {
+                    let notesHtml = '';
+                    ticketsWithNotes.forEach(t => {
+                        notesHtml += `<div style="margin-bottom: 5px;"><strong>De ${t.senderName || 'Un compañero'}:</strong> "${t.sharedNote}"</div>`;
+                    });
+                    noteContainer.innerHTML = notesHtml;
+                    noteContainer.style.display = 'block';
+                } else {
+                    noteContainer.style.display = 'none';
+                }
+                
                 window.openModal('modal-accept-ait');
             }
         }
@@ -651,29 +772,63 @@ Asesoria y apoyo: ${ticket.support || ''}`;
         // 8. AIT Support View updates
         const aitTodayCount = document.getElementById('ait-today-count');
         const listAitToday = document.getElementById('list-ait-today');
+        const dateFilterInput = document.getElementById('ait-history-date-filter');
         
-        const today = new Date().toLocaleDateString('es-ES');
+        let filterDateStr = '';
+        if (dateFilterInput) {
+            if (!dateFilterInput.value) {
+                // Initialize with today's date if empty (YYYY-MM-DD)
+                const todayObj = new Date();
+                const year = todayObj.getFullYear();
+                const month = String(todayObj.getMonth() + 1).padStart(2, '0');
+                const day = String(todayObj.getDate()).padStart(2, '0');
+                dateFilterInput.value = `${year}-${month}-${day}`;
+            }
+            // Convert YYYY-MM-DD to DD/MM/YYYY
+            const parts = dateFilterInput.value.split('-');
+            if (parts.length === 3) {
+                filterDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+        }
+
+        const searchInput = document.getElementById('ait-history-search');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        const targetDateStr = filterDateStr || new Date().toLocaleDateString('es-ES');
+        const normTarget = normalizeDateStr(targetDateStr);
         let myTicketsToday = [];
         
+        let baseTickets = [];
         if (!isAdmin) {
-            myTicketsToday = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.dateStr === today && t.status !== 'pending');
-            if (aitTodayCount) aitTodayCount.textContent = `${myTicketsToday.length} Registros Hoy`;
+            baseTickets = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.status !== 'pending');
         } else {
-            // Para admin, si no hay filtro, mostrar todos?
-            // Depende de la lógica. Por ahora dejamos el count global o vacío si no selecciona.
-            if (aitTodayCount) aitTodayCount.textContent = `${it_tickets.filter(t => t.dateStr === today).length} Registros Hoy (Global)`;
-            
-            // Administrador también debería ver sus propios reportes si se añadió a sí mismo, pero generalmente list-ait-today es para los propios reportes.
-            myTicketsToday = it_tickets.filter(t => t.individualId === window.currentUser.uid && t.dateStr === today && t.status !== 'pending');
+            baseTickets = it_tickets.filter(t => t.status !== 'pending');
         }
+
+        if (searchTerm) {
+            // Buscador Global activo: Ignorar fecha
+            myTicketsToday = baseTickets.filter(t => 
+                (t.client || '').toLowerCase().includes(searchTerm) ||
+                (t.location || '').toLowerCase().includes(searchTerm) ||
+                (t.tag || '').toLowerCase().includes(searchTerm) ||
+                (t.activity || '').toLowerCase().includes(searchTerm)
+            );
+        } else {
+            // Filtrar por fecha
+            myTicketsToday = baseTickets.filter(t => normalizeDateStr(t.dateStr) === normTarget);
+        }
+
+        if (aitTodayCount) aitTodayCount.textContent = `${myTicketsToday.length} Registros Mostrados`;
 
         if (listAitToday) {
             listAitToday.innerHTML = '';
             if (myTicketsToday.length === 0) {
                 listAitToday.innerHTML = '<p class="empty-state">No tienes registros AIT hoy.</p>';
             } else {
-                myTicketsToday.forEach(t => {
+                myTicketsToday.forEach((t, index) => {
                     const li = document.createElement('li');
+                    li.classList.add('fade-in'); // <--- ANIMATION ADDED HERE
+                    li.style.animationDelay = `${index * 0.05}s`;
                     li.style.display = 'flex';
                     li.style.flexDirection = 'column';
                     li.style.gap = '0.5rem';
@@ -697,18 +852,30 @@ Asesoria y apoyo: ${ticket.support || ''}`;
                         shareBadge = `<div style="font-size: 0.8rem; margin-top: 0.5rem; padding: 0.25rem 0.5rem; background-color: ${badgeColor}; color: ${badgeColor === '#ffc107' ? '#000' : '#fff'}; border-radius: 4px; display: inline-block;">${badgeText}</div>`;
                     }
 
+                    // Helper for highlighting text
+                    const highlight = (text, term) => {
+                        if (!term) return text;
+                        const regex = new RegExp(`(${term})`, 'gi');
+                        return String(text).replace(regex, '<span class="highlighted-text">$1</span>');
+                    };
+
                     li.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div>
-                                <strong style="color: var(--primary-color);">🏢 ${t.location}</strong>
-                                <div style="font-size: 0.9rem;">📝 ${t.client}</div>
-                                <div style="font-size: 0.9rem; margin-top: 0.25rem;">✅ ${t.activity}</div>
-                                ${shareBadge}
+                            <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                                <input type="checkbox" class="ait-multi-select-checkbox" value="${t.id}" onchange="window.handleAitMultiSelect()" style="margin-top: 0.3rem; transform: scale(1.2);">
+                                <div>
+                                    <strong style="color: var(--primary-color);">🏢 ${highlight(t.location, searchTerm)}</strong>
+                                    <div style="font-size: 0.9rem;">📝 ${highlight(t.client, searchTerm)}</div>
+                                    <div style="font-size: 0.9rem; margin-top: 0.25rem;">✅ ${highlight(t.activity, searchTerm)}</div>
+                                    ${shareBadge}
+                                </div>
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                            <button class="btn btn-secondary" onclick="window.copyAIT('${t.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; flex: 1;">📋 Copiar Info</button>
-                            <button class="btn btn-primary" onclick="window.openShareAitModal('${t.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; flex: 1;">📲 Enviar a Compa</button>
+                            <button class="btn btn-secondary" onclick="window.copyAIT('${t.id}')" style="padding: 0.25rem; font-size: 0.8rem; flex: 1;">📋 Copiar</button>
+                            <button class="btn btn-primary" onclick="window.openShareAitModal('${t.id}')" style="padding: 0.25rem; font-size: 0.8rem; flex: 1;">📲 Enviar</button>
+                            <button class="btn btn-secondary" onclick="window.editAitTicket('${t.id}')" style="padding: 0.25rem; font-size: 0.8rem; flex: 1; background-color: #ffc107; color: #000;">✏️ Editar</button>
+                            <button class="btn btn-secondary" onclick="window.deleteAitTicket('${t.id}')" style="padding: 0.25rem; font-size: 0.8rem; flex: 1; background-color: #dc3545; color: #fff;">🗑️ Borrar</button>
                         </div>
                     `;
                     listAitToday.appendChild(li);
@@ -718,7 +885,36 @@ Asesoria y apoyo: ${ticket.support || ''}`;
         
         // Report targets update is in reports.js, we will dispatch an event to let it know
         document.dispatchEvent(new Event('dataLoaded'));
+        
+        // Reset multi-share button
+        window.handleAitMultiSelect();
     }
+    
+    // Multi-Select Logic
+    window.handleAitMultiSelect = () => {
+        const checkboxes = document.querySelectorAll('.ait-multi-select-checkbox:checked');
+        const container = document.getElementById('ait-multi-share-container');
+        const countSpan = document.getElementById('ait-multi-share-count');
+        if (!container || !countSpan) return;
+        
+        if (checkboxes.length > 0) {
+            container.style.display = 'flex';
+            countSpan.textContent = `${checkboxes.length} Seleccionado${checkboxes.length !== 1 ? 's' : ''}`;
+        } else {
+            container.style.display = 'none';
+        }
+    };
+    
+    window.openShareAitModalMultiple = () => {
+        const checkboxes = document.querySelectorAll('.ait-multi-select-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+        if (ids.length === 0) return;
+        
+        window.openShareAitModal(JSON.stringify(ids));
+    };
+    
+    // Exponer al scope global para los onchange/oninput del HTML
+    window.updateUI = updateUI;
 
     // Reaction to auth
     document.addEventListener('authStateChanged', (e) => {
@@ -904,9 +1100,33 @@ Asesoria y apoyo: ${ticket.support || ''}`;
     // --- AIT Support Logic ---
     const btnSmartPaste = document.getElementById('btn-smart-paste');
     if (btnSmartPaste) {
-        btnSmartPaste.addEventListener('click', () => {
+        btnSmartPaste.addEventListener('click', async () => {
             const text = document.getElementById('smart-paste-text').value;
             if (!text) return;
+
+            // Función heurística para separar múltiples reportes
+            function splitIntoReports(fullText) {
+                // 1. Intentar dividir por emoji de calendario o "Fecha" al inicio de línea
+                let blocks = fullText.split(/(?=📆|^Fecha:)/im).map(s => s.trim()).filter(s => s.length > 30);
+                // Validar que cada bloque parezca un reporte (tenga ubicación o cliente)
+                if (blocks.length > 1 && blocks.every(b => /(?:🏢|Localidad|Edificio|Sede|📝|Usuario|Cliente)/i.test(b))) {
+                    return blocks;
+                }
+                
+                // 2. Intentar dividir por emoji de edificio o "Localidad/Sede" al inicio de línea
+                blocks = fullText.split(/(?=🏢|^Localidad|^Edificio|^Sede)/im).map(s => s.trim()).filter(s => s.length > 30);
+                if (blocks.length > 1 && blocks.every(b => /(?:📝|Usuario|Cliente|✅|Actividad)/i.test(b))) {
+                    return blocks;
+                }
+                
+                // 3. Fallback: Separador explícito como "---" o múltiples saltos de línea largos
+                blocks = fullText.split(/(?:---|___|\n\s*\n\s*\n)/).map(s => s.trim()).filter(s => s.length > 50);
+                if (blocks.length > 1) return blocks;
+                
+                return [fullText.trim()];
+            }
+
+            const reportBlocks = splitIntoReports(text);
 
             const patterns = [
                 { id: 'ait-location', regex: /(?:🏢|Localidad|Edificio|Sede)[:\s]*([^\n]+)/i },
@@ -924,25 +1144,92 @@ Asesoria y apoyo: ${ticket.support || ''}`;
                 { id: 'ait-support', regex: /Asesoria y apoyo[:\s]*([^\n]+)/i }
             ];
 
-            let foundCount = 0;
-            patterns.forEach(p => {
-                const match = text.match(p.regex);
-                if (match && match[1]) {
-                    const val = match[1].trim();
-                    const input = document.getElementById(p.id);
-                    if (input) {
-                        input.value = val;
-                        foundCount++;
+            if (reportBlocks.length === 1) {
+                // Flujo Normal: 1 solo reporte
+                let foundCount = 0;
+                patterns.forEach(p => {
+                    const match = reportBlocks[0].match(p.regex);
+                    if (match && match[1]) {
+                        const val = match[1].trim();
+                        const input = document.getElementById(p.id);
+                        if (input) {
+                            input.value = val;
+                            foundCount++;
+                        }
+                    }
+                });
+
+                if (foundCount > 0) {
+                    // Buscar si hay fecha en este único bloque
+                    const singleDateMatch = reportBlocks[0].match(/(?:📆|^Fecha|Fecha:)[:\s]*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/im);
+                    if (singleDateMatch && singleDateMatch[1] && document.getElementById('ait-date')) {
+                        document.getElementById('ait-date').value = singleDateMatch[1].replace(/-/g, '/');
+                    }
+                    // Buscar si hay hora (Cualquier formato HH:MM am/pm)
+                    const singleTimeMatch = reportBlocks[0].match(/([0-9]{1,2}:[0-9]{2}(?:\s*(?:AM|PM|am|pm))?)/i);
+                    if (singleTimeMatch && singleTimeMatch[1] && document.getElementById('ait-time')) {
+                        document.getElementById('ait-time').value = singleTimeMatch[1].trim();
+                    }
+
+                    window.showToast(`Se han autocompletado ${foundCount} campos.`);
+                    document.getElementById('smart-paste-container').style.display = 'none';
+                    document.getElementById('smart-paste-text').value = '';
+                } else {
+                    window.showToast('No se encontró información reconocible.', 'error');
+                }
+            } else {
+                // Flujo Batch: Múltiples reportes
+                if (!confirm(`Se han detectado ${reportBlocks.length} reportes en el texto. ¿Deseas guardarlos todos automáticamente en tu historial?`)) {
+                    return;
+                }
+
+                let savedCount = 0;
+                for (const block of reportBlocks) {
+                    const ticketData = {
+                        individualId: window.currentUser.uid,
+                        internName: window.currentUserName || 'Pasante',
+                        dateStr: new Date().toLocaleDateString('es-ES'),
+                        timeStr: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                        location: '', client: '', activity: '', tag: '', brand: '', model: '',
+                        type: '', pool: '', indicator: '', email: '', management: '', business: '', support: '',
+                        photoBase64: null
+                    };
+
+                    patterns.forEach(p => {
+                        const match = block.match(p.regex);
+                        if (match && match[1]) {
+                            const key = p.id.replace('ait-', '');
+                            if (ticketData.hasOwnProperty(key)) {
+                                ticketData[key] = match[1].trim();
+                            }
+                        }
+                    });
+                    
+                    // Extraer fecha si existe en el bloque
+                    const dateMatch = block.match(/(?:📆|^Fecha|Fecha:)[:\s]*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/im);
+                    if (dateMatch && dateMatch[1]) {
+                        ticketData.dateStr = dateMatch[1].replace(/-/g, '/');
+                    }
+                    
+                    // Extraer hora si existe en el bloque
+                    const timeMatch = block.match(/([0-9]{1,2}:[0-9]{2}(?:\s*(?:AM|PM|am|pm))?)/i);
+                    if (timeMatch && timeMatch[1]) {
+                        ticketData.timeStr = timeMatch[1].trim();
+                    }
+                    
+                    // Si al menos extrajo el cliente o la localidad, lo consideramos válido
+                    if (ticketData.client || ticketData.location || ticketData.activity) {
+                        if (Store && Store.addTicket) {
+                            await Store.addTicket(ticketData);
+                            savedCount++;
+                        }
                     }
                 }
-            });
 
-            if (foundCount > 0) {
-                window.showToast(`Se han autocompletado ${foundCount} campos.`);
+                window.showToast(`🪄 Pegado Inteligente: Se han guardado ${savedCount} reportes automáticamente.`);
                 document.getElementById('smart-paste-container').style.display = 'none';
                 document.getElementById('smart-paste-text').value = '';
-            } else {
-                window.showToast('No se encontró información reconocible.', 'error');
+                window.closeModal('modal-ait');
             }
         });
     }
@@ -993,6 +1280,56 @@ Asesoria y apoyo: ${ticket.support || ''}`;
         });
     }
 
+    const quickTemplates = document.getElementById('ait-quick-templates');
+    if (quickTemplates) {
+        quickTemplates.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+            
+            const templates = {
+                'mantenimiento': {
+                    activity: 'Mantenimiento Preventivo (Limpieza física y lógica, optimización de sistema)',
+                    type: 'PC/Laptop',
+                    support: 'Revisión general de hardware y limpieza de temporales',
+                    tag: 'N/A'
+                },
+                'formateo': {
+                    activity: 'Respado de data, Formateo e Instalación de Sistema Operativo',
+                    type: 'PC/Laptop',
+                    support: 'Instalación de SO, Office, Antivirus y utilitarios básicos',
+                    tag: 'N/A'
+                },
+                'red': {
+                    activity: 'Revisión y configuración de punto de red / Conectividad',
+                    type: 'Redes',
+                    support: 'Verificación de cableado UTP, conectores RJ45 y switch',
+                    tag: 'N/A'
+                },
+                'impresora': {
+                    activity: 'Instalación y configuración de impresora',
+                    type: 'Impresora',
+                    support: 'Configuración de drivers y prueba de impresión',
+                    tag: 'N/A'
+                },
+                'respaldo': {
+                    activity: 'Respaldo de información de usuario (Backup)',
+                    type: 'PC/Laptop',
+                    support: 'Copia de seguridad de PST, Documentos, Escritorio',
+                    tag: 'N/A'
+                }
+            };
+            
+            const tpl = templates[val];
+            if (tpl) {
+                if (document.getElementById('ait-activity')) document.getElementById('ait-activity').value = tpl.activity;
+                if (document.getElementById('ait-type')) document.getElementById('ait-type').value = tpl.type;
+                if (document.getElementById('ait-support')) document.getElementById('ait-support').value = tpl.support;
+                if (document.getElementById('ait-tag') && !document.getElementById('ait-tag').value) document.getElementById('ait-tag').value = tpl.tag;
+                window.showToast('Plantilla aplicada. Completa los datos restantes.');
+            }
+        });
+    }
+
     const formAit = document.getElementById('form-ait');
     if (formAit) {
         formAit.addEventListener('submit', async (e) => {
@@ -1001,6 +1338,8 @@ Asesoria y apoyo: ${ticket.support || ''}`;
             if (!confirm('¿Estás seguro de registrar este reporte con los datos ingresados? Verifica que todo esté correcto.')) {
                 return;
             }
+
+            const editId = document.getElementById('ait-edit-id').value;
 
             const ticketData = {
                 individualId: window.currentUser.uid,
@@ -1019,18 +1358,93 @@ Asesoria y apoyo: ${ticket.support || ''}`;
                 email: document.getElementById('ait-email').value.trim(),
                 management: document.getElementById('ait-management').value.trim(),
                 business: document.getElementById('ait-business').value.trim(),
-                support: document.getElementById('ait-support').value.trim(),
-                photoBase64: currentAitPhotoBase64 // Guardamos la foto comprimida
+                support: document.getElementById('ait-support').value.trim()
             };
+            
+            // Only update photo if a new one was provided
+            if (currentAitPhotoBase64) {
+                ticketData.photoBase64 = currentAitPhotoBase64;
+            }
 
-            await Store.addTicket(ticketData);
-            window.showToast('Registro AIT guardado exitosamente');
+            if (editId) {
+                if (Store && Store.updateTicket) {
+                    await Store.updateTicket(editId, ticketData);
+                    window.showToast('Registro AIT actualizado exitosamente');
+                }
+            } else {
+                if (Store && Store.addTicket) {
+                    // Usar la fecha extraída si existe, si no, usar la actual
+                    const extractedDate = document.getElementById('ait-date') ? document.getElementById('ait-date').value : '';
+                    const extractedTime = document.getElementById('ait-time') ? document.getElementById('ait-time').value : '';
+                    
+                    ticketData.dateStr = extractedDate || new Date().toLocaleDateString('es-ES');
+                    ticketData.timeStr = extractedTime || new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    
+                    await Store.addTicket(ticketData);
+                    window.showToast('Registro AIT guardado exitosamente');
+                }
+            }
+            
             e.target.reset();
+            document.getElementById('ait-edit-id').value = '';
+            if (document.getElementById('ait-date')) document.getElementById('ait-date').value = '';
+            if (document.getElementById('ait-time')) document.getElementById('ait-time').value = '';
+            if (document.getElementById('ait-quick-templates')) document.getElementById('ait-quick-templates').value = '';
+            if (document.getElementById('smart-paste-text')) document.getElementById('smart-paste-text').value = '';
             currentAitPhotoBase64 = null;
             if (aitPhotoPreview) aitPhotoPreview.style.display = 'none';
             window.closeModal('modal-ait');
         });
     }
+
+    // CRUD Funciones
+    window.editAitTicket = (id) => {
+        const ticket = Store.data.it_tickets.find(t => t.id === id);
+        if (!ticket) return;
+
+        document.getElementById('ait-edit-id').value = ticket.id;
+        document.getElementById('ait-location').value = ticket.location || '';
+        document.getElementById('ait-client').value = ticket.client || '';
+        document.getElementById('ait-activity').value = ticket.activity || '';
+        document.getElementById('ait-tag').value = ticket.tag || '';
+        document.getElementById('ait-brand').value = ticket.brand || '';
+        document.getElementById('ait-model').value = ticket.model || '';
+        document.getElementById('ait-type').value = ticket.type || '';
+        document.getElementById('ait-pool').value = ticket.pool || '';
+        document.getElementById('ait-indicator').value = ticket.indicator || '';
+        document.getElementById('ait-email').value = ticket.email || '';
+        document.getElementById('ait-management').value = ticket.management || '';
+        document.getElementById('ait-business').value = ticket.business || '';
+        document.getElementById('ait-support').value = ticket.support || '';
+        
+        currentAitPhotoBase64 = ticket.photoBase64 || null;
+        if (aitPhotoPreview) {
+            if (ticket.photoBase64) {
+                aitPhotoPreview.src = ticket.photoBase64;
+                aitPhotoPreview.style.display = 'block';
+            } else {
+                aitPhotoPreview.style.display = 'none';
+            }
+        }
+
+        window.closeModal('modal-ait-history');
+        window.openModal('modal-ait');
+    };
+
+    window.deleteAitTicket = async (id) => {
+        if (!confirm('¿Estás seguro de que deseas eliminar este reporte de forma permanente?')) {
+            return;
+        }
+        try {
+            if (Store && Store.deleteTicket) {
+                await Store.deleteTicket(id);
+                window.showToast('Reporte eliminado exitosamente');
+            }
+        } catch (e) {
+            console.error('Error eliminando reporte:', e);
+            window.showToast('Error al eliminar el reporte', 'error');
+        }
+    };
 
     const btnGenerateAitPdf = document.getElementById('btn-generate-ait-pdf');
     if (btnGenerateAitPdf) {
@@ -1058,55 +1472,87 @@ Asesoria y apoyo: ${ticket.support || ''}`;
                 return;
             }
 
-            const container = document.getElementById('ait-pdf-container');
-            container.innerHTML = `<h1 style="text-align: center; margin-bottom: 2rem;">Reporte Diario AIT - ${today}</h1>`;
+            let pdfHtml = `<div style="padding: 20px 40px; background: white; color: #333; font-family: 'Helvetica', Arial, sans-serif; width: 800px; max-width: 100%;">`;
+            pdfHtml += `
+                <div style="border-bottom: 3px solid #dc3545; padding-bottom: 15px; margin-bottom: 30px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="vertical-align: bottom;">
+                                <h1 style="margin: 0; color: #dc3545; font-size: 24px; font-weight: 800; text-transform: uppercase;">Reporte Técnico Diario</h1>
+                                <h3 style="margin: 5px 0 0 0; color: #555; font-size: 16px; font-weight: 400;">Soporte de Infraestructura AIT</h3>
+                            </td>
+                            <td style="text-align: right; vertical-align: bottom; font-size: 14px; color: #666; line-height: 1.5;">
+                                <strong>Analista:</strong> ${targetUserName}<br>
+                                <strong>Fecha:</strong> ${today}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            `;
 
             myTicketsToday.forEach((t, index) => {
-                const ticketHtml = `
-                    <div style="margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #ccc; font-size: 14px; line-height: 1.6;">
-                        <div style="margin-bottom: 10px;">
-                            📆 ${t.dateStr}<br>
-                            🏢 ${t.location}<br>
-                            ⏱️ ${t.timeStr}<br>
-                            📝 ${t.client}
+                pdfHtml += `
+                    <div style="margin-bottom: 25px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; word-break: break-word;">
+                        <div style="background-color: #f8f9fa; padding: 10px 15px; border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #333;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="text-align: left; font-size: 15px;">📋 Ticket #${String(index + 1).padStart(2, '0')}</td>
+                                    <td style="text-align: right; font-size: 13px; color: #666;">⏱️ ${t.timeStr}</td>
+                                </tr>
+                            </table>
                         </div>
-                        <div style="margin-bottom: 15px; font-weight: bold;">
-                            ✅ ${t.activity}
+                        <div style="padding: 15px;">
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px;">
+                                <tr>
+                                    <td style="padding: 6px; width: 20%; color: #777;"><strong>🏢 Ubicación:</strong></td>
+                                    <td style="padding: 6px; width: 30%; border-right: 1px solid #eee;">${t.location}</td>
+                                    <td style="padding: 6px; width: 20%; color: #777; padding-left: 15px;"><strong>📝 Cliente:</strong></td>
+                                    <td style="padding: 6px; width: 30%;">${t.client}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px; color: #777;"><strong>💻 Equipo:</strong></td>
+                                    <td style="padding: 6px; border-right: 1px solid #eee;">${t.type} ${t.brand} ${t.model}</td>
+                                    <td style="padding: 6px; color: #777; padding-left: 15px;"><strong>🔖 Etiqueta:</strong></td>
+                                    <td style="padding: 6px;">${t.tag} (Pool: ${t.pool})</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px; color: #777;"><strong>📊 Gerencia:</strong></td>
+                                    <td style="padding: 6px; border-right: 1px solid #eee;">${t.management} / ${t.business}</td>
+                                    <td style="padding: 6px; color: #777; padding-left: 15px;"><strong>✉️ Contacto:</strong></td>
+                                    <td style="padding: 6px;">${t.email} (Ind: ${t.indicator})</td>
+                                </tr>
+                            </table>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">✅ Actividad Realizada</div>
+                                <div style="background-color: #f1f8ff; padding: 12px; border-left: 4px solid #0056b3; font-size: 14px; border-radius: 0 4px 4px 0; color: #222; word-break: break-word;">
+                                    ${t.activity}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">💡 Asesoría y Apoyo</div>
+                                <div style="background-color: #fff9e6; padding: 12px; border-left: 4px solid #ffc107; font-size: 14px; border-radius: 0 4px 4px 0; color: #222; word-break: break-word;">
+                                    ${t.support || 'N/A'}
+                                </div>
+                            </div>
+                            
+                            ${t.photoBase64 ? `<div style="margin-top: 15px; text-align: center;"><img src="${t.photoBase64}" style="max-width: 100%; max-height: 250px; border-radius: 6px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>` : ''}
                         </div>
-                        <div>
-                            Etiqueta: ${t.tag}<br>
-                            Marca: ${t.brand}<br>
-                            Modelo: ${t.model}<br>
-                            Laptop/PC: ${t.type}<br>
-                            Usuario/Pool: ${t.pool}<br>
-                            Indicador: ${t.indicator}<br>
-                            Correo: ${t.email}<br>
-                            GERENCIA: ${t.management}<br>
-                            Negocio: ${t.business}
-                        </div>
-                        <div style="margin-top: 15px;">
-                            Pasante: ${t.internName}<br>
-                            Asesoría y Apoyo: ${t.support}
-                        </div>
-                        ${t.photoBase64 ? `<div style="margin-top: 15px; text-align: center;"><img src="${t.photoBase64}" style="max-width: 100%; max-height: 300px; border: 1px solid #ccc; border-radius: 4px;"></div>` : ''}
                     </div>
                 `;
-                container.innerHTML += ticketHtml;
             });
-
-            // Make container visible for rendering
-            container.style.display = 'block';
+            pdfHtml += `</div>`;
 
             const opt = {
                 margin:       10,
-                filename:     `Reporte_AIT_${targetUserName}_${today.replace(/\\//g, '-')}.pdf`,
+                filename:     `Reporte_AIT_${targetUserName}_${today.replace(/\//g, '-')}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(container).save().then(() => {
-                container.style.display = 'none'; // hide it back
+            html2pdf().set(opt).from(pdfHtml).save().then(() => {
                 window.showToast('PDF generado correctamente');
             });
         });
@@ -1156,8 +1602,15 @@ Asesoria y apoyo: ${ticket.support || ''}`;
                 return;
             }
 
-            let wordHtml = `<h1 style="text-align: center; font-family: Arial;">Reporte Semanal AIT - ${targetUserName}</h1>`;
-            wordHtml += `<p style="text-align: center; font-family: Arial;">Período: ${sevenDaysAgo.toLocaleDateString('es-ES')} al ${todayObj.toLocaleDateString('es-ES')}</p><hr>`;
+            let wordHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+                    <h1 style="text-align: center; color: #2b579a; font-size: 24px; text-transform: uppercase; margin-bottom: 5px;">Reporte Semanal AIT</h1>
+                    <h3 style="text-align: center; color: #444; font-size: 16px; margin-top: 0;">Analista: ${targetUserName}</h3>
+                    <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;">
+                        <strong>Período:</strong> ${sevenDaysAgo.toLocaleDateString('es-ES')} al ${todayObj.toLocaleDateString('es-ES')}
+                    </p>
+                    <hr style="border: 0; border-top: 2px solid #2b579a; margin-bottom: 30px;">
+            `;
 
             myTicketsWeekly.sort((a, b) => {
                 const aParts = a.dateStr.split('/');
@@ -1167,19 +1620,38 @@ Asesoria y apoyo: ${ticket.support || ''}`;
                 return aDate - bDate;
             });
 
-            myTicketsWeekly.forEach(t => {
+            myTicketsWeekly.forEach((t, index) => {
                 wordHtml += `
-                    <div style="font-family: Arial; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
-                        <p><b>Fecha:</b> ${t.dateStr} | <b>Hora:</b> ${t.timeStr} | <b>Ubicación:</b> ${t.location}</p>
-                        <p><b>Usuario/Cliente:</b> ${t.client} (<b>Indicador:</b> ${t.indicator})</p>
-                        <p><b>Actividad:</b> ${t.activity}</p>
-                        <p><b>Equipo:</b> ${t.type} ${t.brand} ${t.model} - <b>Etiqueta:</b> ${t.tag} - <b>Pool:</b> ${t.pool}</p>
-                        <p><b>Gerencia/Negocio:</b> ${t.management} / ${t.business}</p>
-                        <p><b>Asesoría:</b> ${t.support}</p>
-                        ${t.photoBase64 ? `<p><i>[Imagen adjunta en el reporte original]</i></p>` : ''}
+                    <div style="margin-bottom: 25px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; background-color: #fafafa; word-break: break-word; page-break-inside: avoid;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px;">
+                            <tr>
+                                <td style="width: 25%; color: #555;"><b>📅 Fecha:</b> ${t.dateStr}</td>
+                                <td style="width: 25%; color: #555;"><b>⏱️ Hora:</b> ${t.timeStr}</td>
+                                <td style="width: 50%; color: #555; word-break: break-word;"><b>🏢 Ubicación:</b> ${t.location}</td>
+                            </tr>
+                        </table>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 15px; background-color: #fff; border: 1px solid #eee;">
+                            <tr>
+                                <td style="width: 50%; padding: 5px; border-right: 1px solid #eee; word-break: break-word;"><b>📝 Cliente:</b> ${t.client}</td>
+                                <td style="width: 50%; padding: 5px; word-break: break-word;"><b>💻 Equipo:</b> ${t.type} ${t.brand} ${t.model} (Tag: ${t.tag})</td>
+                            </tr>
+                            <tr>
+                                <td style="width: 50%; padding: 5px; border-right: 1px solid #eee; word-break: break-word;"><b>📊 Gerencia:</b> ${t.management} / ${t.business}</td>
+                                <td style="width: 50%; padding: 5px; word-break: break-word;"><b>👥 Pool:</b> ${t.pool} | <b>Ind:</b> ${t.indicator}</td>
+                            </tr>
+                        </table>
+                        
+                        <div style="background-color: #e9f2ff; padding: 10px; margin-bottom: 10px; border-left: 3px solid #2b579a; word-break: break-word;">
+                            <p style="margin: 0; font-size: 13px;"><b>✅ Actividad:</b> ${t.activity}</p>
+                        </div>
+                        <div style="background-color: #fffde7; padding: 10px; border-left: 3px solid #fbc02d; word-break: break-word;">
+                            <p style="margin: 0; font-size: 13px;"><b>💡 Asesoría:</b> ${t.support || 'N/A'}</p>
+                        </div>
+                        ${t.photoBase64 ? `<p style="color: #888; font-size: 11px; text-align: center; margin-top: 10px;"><i>[📸 Contiene evidencia fotográfica en el sistema]</i></p>` : ''}
                     </div>
                 `;
             });
+            wordHtml += `</div>`;
 
             // Empaquetar como archivo .doc
             const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Reporte Semanal</title></head><body>";
@@ -1197,6 +1669,77 @@ Asesoria y apoyo: ${ticket.support || ''}`;
             document.body.removeChild(downloadLink);
             
             window.showToast('Reporte Semanal (Word) descargado.');
+        });
+    }
+
+    const btnExportCsv = document.getElementById('btn-export-csv');
+    if (btnExportCsv) {
+        btnExportCsv.addEventListener('click', () => {
+            const listEl = document.getElementById('list-ait-today');
+            if (!listEl) return;
+            
+            // Re-evaluar los tickets mostrados actualmente (se basan en la búsqueda/fecha de updateUI)
+            const searchInput = document.getElementById('ait-history-search');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            
+            const dateFilterInput = document.getElementById('ait-history-date-filter');
+            let filterDateStr = '';
+            if (dateFilterInput && dateFilterInput.value) {
+                const parts = dateFilterInput.value.split('-');
+                if (parts.length === 3) filterDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+
+            const normalizeDateStr = (dateStr) => {
+                if (!dateStr) return '';
+                const parts = dateStr.split('/');
+                if (parts.length === 3) return `${parseInt(parts[0], 10)}/${parseInt(parts[1], 10)}/${parts[2]}`;
+                return dateStr;
+            };
+
+            const normTarget = normalizeDateStr(filterDateStr || new Date().toLocaleDateString('es-ES'));
+            
+            let exportTickets = [];
+            const allT = Store.data.it_tickets || [];
+            
+            if (searchTerm) {
+                exportTickets = allT.filter(t => t.individualId === window.currentUser.uid && t.status !== 'pending' && (
+                    (t.client || '').toLowerCase().includes(searchTerm) ||
+                    (t.location || '').toLowerCase().includes(searchTerm) ||
+                    (t.tag || '').toLowerCase().includes(searchTerm) ||
+                    (t.activity || '').toLowerCase().includes(searchTerm)
+                ));
+            } else {
+                exportTickets = allT.filter(t => t.individualId === window.currentUser.uid && t.status !== 'pending' && normalizeDateStr(t.dateStr) === normTarget);
+            }
+
+            if (exportTickets.length === 0) {
+                window.showToast('No hay datos para exportar.', 'error');
+                return;
+            }
+
+            // Crear CSV
+            const headers = ['Fecha', 'Hora', 'Localidad', 'Cliente', 'Actividad', 'Etiqueta', 'Marca', 'Modelo', 'Tipo', 'Pool', 'Indicador', 'Correo', 'Gerencia', 'Negocio', 'Apoyo'];
+            let csvContent = headers.join(',') + '\n';
+
+            exportTickets.forEach(t => {
+                const row = [
+                    t.dateStr, t.timeStr, t.location, t.client, t.activity, t.tag, t.brand, t.model, t.type, t.pool, t.indicator, t.email, t.management, t.business, t.support
+                ].map(val => {
+                    let str = String(val || '').replace(/"/g, '""'); // Escape comillas
+                    return `"${str}"`; // Envolver en comillas por si hay comas
+                });
+                csvContent += row.join(',') + '\n';
+            });
+
+            const blob = new Blob(['\ufeff', csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Exportacion_AIT_${new Date().getTime()}.csv`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.showToast('Archivo CSV exportado exitosamente.');
         });
     }
 });
